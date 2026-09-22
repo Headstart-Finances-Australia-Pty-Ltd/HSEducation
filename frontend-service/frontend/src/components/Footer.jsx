@@ -38,9 +38,8 @@ const Footer = ({ setPage }) => (
         <div>
           <div className="footer-col-title">Contact</div>
           <ul className="footer-links">
-            <li><a>📍 Level 4, 10 Spring St, Sydney NSW 2000</a></li>
+            <li><a>📍 Sydney NSW 2000</a></li>
             <li><a>📧 info@hseducation.com.au</a></li>
-            <li><a>📞 (02) 8880 1234</a></li>
           </ul>
           <div style={{ marginTop: '1.5rem' }}>
             <div className="footer-col-title">Follow Us</div>
