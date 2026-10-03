@@ -1,6 +1,6 @@
 // ============================================================
 // Headstart Education — Mailer (system email)
-// SMTP settings are managed in Admin Console → "Email Settings" and stored
+// SMTP settings are managed in Admin Console → "API Key Settings → Email" and stored
 // in app_settings (password encrypted). Environment variables are only a
 // fallback: SMTP_HOST, SMTP_PORT, SMTP_SECURE, SMTP_USER, SMTP_PASSWORD,
 // EMAIL_FROM_NAME, EMAIL_FROM_ADDRESS, EMAIL_REPLY_TO, EMAIL_ADMIN_NOTIFY.
@@ -83,7 +83,7 @@ function fromHeader(cfg) {
 // Throws on failure. Returns nodemailer's info object.
 async function send({ to, subject, text, html, headers }) {
   const cfg = await getConfig();
-  if (!cfg.configured) throw new Error('Email is not configured. Add SMTP details in Admin Console → Email Settings.');
+  if (!cfg.configured) throw new Error('Email is not configured. Add SMTP details in Admin Console → API Key Settings → Email.');
   try {
     return await transportFor(cfg).sendMail({
       from: fromHeader(cfg), to, subject, text, html,
@@ -99,7 +99,7 @@ async function send({ to, subject, text, html, headers }) {
 // onEach(index, error|null) after every message. Never throws per-message.
 async function sendBatch(messages, onEach, { delayMs = 150 } = {}) {
   const cfg = await getConfig();
-  if (!cfg.configured) throw new Error('Email is not configured. Add SMTP details in Admin Console → Email Settings.');
+  if (!cfg.configured) throw new Error('Email is not configured. Add SMTP details in Admin Console → API Key Settings → Email.');
   if (!nodemailer) throw new Error('The "nodemailer" package is not installed on the server.');
   const transport = nodemailer.createTransport({
     host: cfg.host, port: cfg.port, secure: cfg.secure,

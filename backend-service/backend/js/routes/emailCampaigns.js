@@ -187,7 +187,7 @@ router.post('/send', async (req, res) => {
     if (body.length < 20) return res.status(400).json({ message: 'The email body is too short.' });
 
     const mail = await mailer.getConfig();
-    if (!mail.configured) return res.status(400).json({ message: 'System email is not set up yet — a super admin must complete Admin Console → Email Settings.' });
+    if (!mail.configured) return res.status(400).json({ message: 'System email is not set up yet — a super admin must complete Admin Console → API Key Settings → Email.' });
 
     const base = publicBase(req);
     const label = audience.slice(0, -1);   // donor | member | partner
