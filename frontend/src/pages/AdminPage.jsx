@@ -139,7 +139,7 @@ const DonationsTab = () => {
 // ─── Projects tab ────────────────────────────────────────────────────────────
 const emptyProject = { name: '', category: 'Infrastructure', description: '', location: '', status: 'fundraising' };
 
-const ProjectsTab = () => {
+const ProjectsTab = ({ canEdit }) => {
   const [programs, setPrograms] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -195,10 +195,10 @@ const ProjectsTab = () => {
     <div>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.2rem' }}>
         <h3 style={{ fontFamily: 'var(--font-display)', color: 'var(--navy)' }}>Projects</h3>
-        <button className="btn-teal" onClick={() => setShowForm((s) => !s)}>{showForm ? 'Cancel' : '+ Add Project'}</button>
+        {canEdit && <button className="btn-teal" onClick={() => setShowForm((s) => !s)}>{showForm ? 'Cancel' : '+ Add Project'}</button>}
       </div>
 
-      {showForm && (
+      {canEdit && showForm && (
         <form onSubmit={handleAdd} style={{ background: 'white', border: '1px solid var(--gray-200)', borderRadius: '16px', padding: '1.5rem', marginBottom: '1.5rem' }}>
           <div className="form-row">
             <div className="form-group">
@@ -239,11 +239,11 @@ const ProjectsTab = () => {
         <div style={{ background: 'white', border: '1px solid var(--gray-200)', borderRadius: '16px', overflow: 'hidden' }}>
           <table className="admin-table">
             <thead>
-              <tr><th>Name</th><th>Category</th><th>Location</th><th>Status</th><th></th></tr>
+              <tr><th>Name</th><th>Category</th><th>Location</th><th>Status</th>{canEdit && <th></th>}</tr>
             </thead>
             <tbody>
               {programs.length === 0 && (
-                <tr><td colSpan={5} style={{ textAlign: 'center', color: 'var(--gray-500)', padding: '1.5rem' }}>No projects listed.</td></tr>
+                <tr><td colSpan={canEdit ? 5 : 4} style={{ textAlign: 'center', color: 'var(--gray-500)', padding: '1.5rem' }}>No projects listed.</td></tr>
               )}
               {programs.map((p) => (
                 <tr key={p.id}>
@@ -251,11 +251,13 @@ const ProjectsTab = () => {
                   <td>{p.category}</td>
                   <td>{p.location}</td>
                   <td><span className={`admin-status admin-status-${p.status}`}>{p.status}</span></td>
-                  <td>
-                    <button onClick={() => handleDelete(p.id)} style={{ background: 'none', border: 'none', color: '#dc2626', cursor: 'pointer', fontSize: '0.8rem', fontWeight: 600 }}>
-                      Remove
-                    </button>
-                  </td>
+                  {canEdit && (
+                    <td>
+                      <button onClick={() => handleDelete(p.id)} style={{ background: 'none', border: 'none', color: '#dc2626', cursor: 'pointer', fontSize: '0.8rem', fontWeight: 600 }}>
+                        Remove
+                      </button>
+                    </td>
+                  )}
                 </tr>
               ))}
             </tbody>
@@ -266,19 +268,35 @@ const ProjectsTab = () => {
   );
 };
 
-// ─── Admin Users tab (superadmin only) ──────────────────────────────────────
-const AdminUsersTab = ({ currentUsername }) => {
-  const [admins, setAdmins] = useState([]);
+// ─── Users tab (superadmin only) ────────────────────────────────────────────
+// Manage everyone who can log in to the console — super admins, admins and
+// other staff. Roles are enforced server-side; this screen just edits them.
+const ROLE_INFO = {
+  superadmin: { label: 'Super Admin', desc: 'Everything, including Users, Square Settings and Database Tables.' },
+  admin:      { label: 'Admin',       desc: 'View donations and update their status; manage projects.' },
+  editor:     { label: 'Editor',      desc: 'View donations; add, edit and remove projects.' },
+  viewer:     { label: 'Viewer',      desc: 'Read-only access to donations and projects.' },
+};
+
+const emptyUser = { username: '', name: '', email: '', role: 'viewer', password: '', is_active: true };
+
+const linkBtn = (color) => ({ background: 'none', border: 'none', color, cursor: 'pointer', fontSize: '0.8rem', fontWeight: 600 });
+
+const UsersTab = ({ currentUsername }) => {
+  const [users, setUsers] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
-  const [form, setForm] = useState({ username: '', password: '', name: '', role: 'admin' });
+  const [notice, setNotice] = useState('');
+  const [form, setForm] = useState(emptyUser);
+  const [editingId, setEditingId] = useState(null);   // null = creating a new user
+  const [showForm, setShowForm] = useState(false);
   const [saving, setSaving] = useState(false);
 
   const load = useCallback(async () => {
     setLoading(true);
     setError('');
     try {
-      setAdmins(await adminFetch('/api/admin-users'));
+      setUsers(await adminFetch('/api/users'));
     } catch (err) {
       setError(err.message);
     } finally {
@@ -288,18 +306,34 @@ const AdminUsersTab = ({ currentUsername }) => {
 
   useEffect(() => { load(); }, [load]);
 
-  const handleAdd = async (e) => {
+  const openCreate = () => { setEditingId(null); setForm(emptyUser); setError(''); setNotice(''); setShowForm(true); };
+  const openEdit = (u) => {
+    setEditingId(u.id);
+    setForm({ username: u.username, name: u.name || '', email: u.email || '', role: u.role, password: '', is_active: u.is_active });
+    setError(''); setNotice(''); setShowForm(true);
+  };
+  const closeForm = () => { setShowForm(false); setEditingId(null); setForm(emptyUser); };
+
+  const handleSave = async (e) => {
     e.preventDefault();
-    if (!form.username || !form.password) return;
     setSaving(true);
     setError('');
+    setNotice('');
     try {
-      await adminFetch('/api/admin-users', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(form),
-      });
-      setForm({ username: '', password: '', name: '', role: 'admin' });
+      if (editingId) {
+        const body = { name: form.name, email: form.email, role: form.role, is_active: form.is_active };
+        if (form.password) body.password = form.password;   // blank = leave password alone
+        await adminFetch(`/api/users/${editingId}`, {
+          method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body),
+        });
+        setNotice(`Saved changes to ${form.username}.`);
+      } else {
+        await adminFetch('/api/users', {
+          method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(form),
+        });
+        setNotice(`Created user ${form.username.trim().toLowerCase()}.`);
+      }
+      closeForm();
       load();
     } catch (err) {
       setError(err.message);
@@ -308,74 +342,296 @@ const AdminUsersTab = ({ currentUsername }) => {
     }
   };
 
-  const handleDelete = async (id) => {
-    if (!window.confirm('Remove this admin account?')) return;
+  const toggleActive = async (u) => {
+    setError(''); setNotice('');
     try {
-      await adminFetch(`/api/admin-users/${id}`, { method: 'DELETE' });
+      await adminFetch(`/api/users/${u.id}`, {
+        method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ is_active: !u.is_active }),
+      });
       load();
     } catch (err) {
       setError(err.message);
     }
   };
 
+  const handleDelete = async (u) => {
+    if (!window.confirm(`Remove ${u.username}? They will no longer be able to log in. This can't be undone.`)) return;
+    setError(''); setNotice('');
+    try {
+      await adminFetch(`/api/users/${u.id}`, { method: 'DELETE' });
+      setNotice(`Removed ${u.username}.`);
+      load();
+    } catch (err) {
+      setError(err.message);
+    }
+  };
+
+  const card = { background: 'white', border: '1px solid var(--gray-200)', borderRadius: '16px' };
+
   return (
     <div>
-      <h3 style={{ fontFamily: 'var(--font-display)', color: 'var(--navy)', marginBottom: '1.2rem' }}>Admin Accounts</h3>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.2rem' }}>
+        <h3 style={{ fontFamily: 'var(--font-display)', color: 'var(--navy)' }}>Users</h3>
+        <button className="btn-teal" onClick={showForm ? closeForm : openCreate}>{showForm ? 'Cancel' : '+ Add User'}</button>
+      </div>
 
-      <form onSubmit={handleAdd} style={{ background: 'white', border: '1px solid var(--gray-200)', borderRadius: '16px', padding: '1.5rem', marginBottom: '1.5rem' }}>
-        <div className="form-row">
-          <div className="form-group">
-            <label className="form-label">Username *</label>
-            <input className="form-input" value={form.username} onChange={(e) => setForm({ ...form, username: e.target.value })} required />
+      {showForm && (
+        <form onSubmit={handleSave} style={{ ...card, padding: '1.5rem', marginBottom: '1.5rem' }}>
+          <h4 style={{ fontFamily: 'var(--font-display)', color: 'var(--navy)', marginBottom: '1rem' }}>
+            {editingId ? `Edit ${form.username}` : 'New user'}
+          </h4>
+          <div className="form-row">
+            <div className="form-group">
+              <label className="form-label">Username *</label>
+              <input className="form-input" value={form.username} onChange={(e) => setForm({ ...form, username: e.target.value })}
+                required disabled={!!editingId} autoComplete="off" placeholder="e.g. jsmith" />
+            </div>
+            <div className="form-group">
+              <label className="form-label">Display Name</label>
+              <input className="form-input" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} />
+            </div>
           </div>
-          <div className="form-group">
-            <label className="form-label">Display Name</label>
-            <input className="form-input" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} />
+          <div className="form-row">
+            <div className="form-group">
+              <label className="form-label">Email</label>
+              <input className="form-input" type="email" value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} />
+            </div>
+            <div className="form-group">
+              <label className="form-label">Role</label>
+              <select className="form-input" value={form.role} onChange={(e) => setForm({ ...form, role: e.target.value })}>
+                {Object.entries(ROLE_INFO).map(([value, { label }]) => <option key={value} value={value}>{label}</option>)}
+              </select>
+              <p style={{ fontSize: '0.75rem', color: 'var(--gray-500)', marginTop: '0.35rem' }}>{ROLE_INFO[form.role].desc}</p>
+            </div>
           </div>
-        </div>
-        <div className="form-row">
-          <div className="form-group">
-            <label className="form-label">Password *</label>
-            <input className="form-input" type="password" value={form.password} onChange={(e) => setForm({ ...form, password: e.target.value })} required />
+          <div className="form-row">
+            <div className="form-group">
+              <label className="form-label">{editingId ? 'New Password (leave blank to keep current)' : 'Password * (min 8 characters)'}</label>
+              <input className="form-input" type="password" value={form.password} onChange={(e) => setForm({ ...form, password: e.target.value })}
+                required={!editingId} minLength={form.password ? 8 : undefined} autoComplete="new-password" />
+            </div>
+            <div className="form-group" style={{ display: 'flex', alignItems: 'flex-end' }}>
+              <label style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '0.9rem', cursor: 'pointer', paddingBottom: '0.7rem' }}>
+                <input type="checkbox" checked={form.is_active} onChange={(e) => setForm({ ...form, is_active: e.target.checked })} />
+                Account active (can log in)
+              </label>
+            </div>
           </div>
-          <div className="form-group">
-            <label className="form-label">Role</label>
-            <select className="form-input" value={form.role} onChange={(e) => setForm({ ...form, role: e.target.value })}>
-              <option value="admin">Admin</option>
-              <option value="superadmin">Super Admin</option>
-            </select>
-          </div>
-        </div>
-        {error && <div className="payment-error">{error}</div>}
-        <button className="donate-btn" type="submit" disabled={saving} style={{ opacity: saving ? 0.7 : 1 }}>
-          {saving ? 'Creating…' : 'Create Admin Account'}
-        </button>
-      </form>
+          {error && <div className="payment-error">{error}</div>}
+          <button className="donate-btn" type="submit" disabled={saving} style={{ opacity: saving ? 0.7 : 1 }}>
+            {saving ? 'Saving…' : (editingId ? 'Save Changes' : 'Create User')}
+          </button>
+        </form>
+      )}
 
-      {loading && <p style={{ color: 'var(--gray-600)' }}>Loading admin accounts…</p>}
+      {!showForm && error && <div className="payment-error">{error}</div>}
+      {notice && <div style={{ background: 'rgba(16,185,129,0.1)', border: '1px solid #10b981', color: '#065f46', borderRadius: '8px', padding: '0.7rem 1rem', marginBottom: '1rem', fontSize: '0.85rem' }}>{notice}</div>}
+      {loading && <p style={{ color: 'var(--gray-600)' }}>Loading users…</p>}
 
       {!loading && (
-        <div style={{ background: 'white', border: '1px solid var(--gray-200)', borderRadius: '16px', overflow: 'hidden' }}>
-          <table className="admin-table">
-            <thead><tr><th>Username</th><th>Name</th><th>Role</th><th>Created</th><th></th></tr></thead>
+        <div style={{ ...card, overflowX: 'auto' }}>
+          <table className="admin-table" style={{ minWidth: 680 }}>
+            <thead>
+              <tr><th>Username</th><th>Name</th><th>Email</th><th>Role</th><th>Status</th><th>Last login</th><th></th></tr>
+            </thead>
             <tbody>
-              {admins.map((a) => (
-                <tr key={a.id}>
-                  <td>{a.username}</td>
-                  <td>{a.name}</td>
-                  <td style={{ textTransform: 'capitalize' }}>{a.role}</td>
-                  <td>{a.created_at ? new Date(a.created_at).toLocaleDateString() : '—'}</td>
-                  <td>
-                    {a.username !== currentUsername && (
-                      <button onClick={() => handleDelete(a.id)} style={{ background: 'none', border: 'none', color: '#dc2626', cursor: 'pointer', fontSize: '0.8rem', fontWeight: 600 }}>
-                        Remove
-                      </button>
-                    )}
-                  </td>
-                </tr>
-              ))}
+              {users.length === 0 && (
+                <tr><td colSpan={7} style={{ textAlign: 'center', color: 'var(--gray-500)', padding: '1.5rem' }}>No users yet.</td></tr>
+              )}
+              {users.map((u) => {
+                const isSelf = u.username === currentUsername;
+                return (
+                  <tr key={u.id} style={{ opacity: u.is_active ? 1 : 0.6 }}>
+                    <td><strong>{u.username}</strong>{isSelf && <span style={{ color: 'var(--gray-500)', fontSize: '0.75rem' }}> (you)</span>}</td>
+                    <td>{u.name}</td>
+                    <td>{u.email || '—'}</td>
+                    <td>{ROLE_INFO[u.role]?.label || u.role}</td>
+                    <td>
+                      <span className={`admin-status admin-status-${u.is_active ? 'completed' : 'failed'}`}>{u.is_active ? 'active' : 'disabled'}</span>
+                    </td>
+                    <td>{u.last_login_at ? new Date(u.last_login_at).toLocaleString() : 'Never'}</td>
+                    <td style={{ whiteSpace: 'nowrap' }}>
+                      <div style={{ display: 'flex', gap: '0.8rem' }}>
+                        <button onClick={() => openEdit(u)} style={linkBtn('var(--teal)')}>Edit</button>
+                        {!isSelf && (
+                          <>
+                            <button onClick={() => toggleActive(u)} style={linkBtn('var(--gray-700)')}>{u.is_active ? 'Disable' : 'Enable'}</button>
+                            <button onClick={() => handleDelete(u)} style={linkBtn('#dc2626')}>Remove</button>
+                          </>
+                        )}
+                      </div>
+                    </td>
+                  </tr>
+                );
+              })}
             </tbody>
           </table>
+        </div>
+      )}
+
+      <div style={{ ...card, padding: '1.2rem 1.5rem', marginTop: '1.5rem' }}>
+        <div style={{ fontWeight: 600, fontSize: '0.85rem', color: 'var(--navy)', marginBottom: '0.6rem' }}>What each role can do</div>
+        {Object.entries(ROLE_INFO).map(([value, { label, desc }]) => (
+          <div key={value} style={{ fontSize: '0.82rem', color: 'var(--gray-700)', marginBottom: '0.3rem' }}>
+            <strong>{label}</strong> — {desc}
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+};
+
+// ─── Square Settings tab (superadmin only) ──────────────────────────────────
+// Square credentials live in the database (access token encrypted), so
+// they can be changed here without redeploying. Application ID + Location ID
+// are public identifiers used by the donate form; the access token is the
+// secret the server uses to actually take payments.
+const SquareSettingsTab = () => {
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+  const [testing, setTesting] = useState(false);
+  const [error, setError] = useState('');
+  const [notice, setNotice] = useState('');
+  const [testResult, setTestResult] = useState(null);
+  const [meta, setMeta] = useState({ accessTokenSet: false, accessTokenLast4: null, sources: {} });
+  const [form, setForm] = useState({ environment: 'sandbox', applicationId: '', locationId: '', accessToken: '' });
+
+  const load = useCallback(async () => {
+    setLoading(true);
+    setError('');
+    try {
+      const s = await adminFetch('/api/square/settings');
+      setMeta({ accessTokenSet: s.accessTokenSet, accessTokenLast4: s.accessTokenLast4, sources: s.sources || {} });
+      setForm({ environment: s.environment, applicationId: s.applicationId, locationId: s.locationId, accessToken: '' });
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  useEffect(() => { load(); }, [load]);
+
+  const save = async (extra = {}) => {
+    setSaving(true); setError(''); setNotice(''); setTestResult(null);
+    try {
+      await adminFetch('/api/square/settings', {
+        method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ ...form, ...extra }),
+      });
+      setNotice(extra.clearAccessToken ? 'Access token removed.' : 'Square settings saved. They take effect immediately — no restart needed.');
+      await load();
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleSubmit = (e) => { e.preventDefault(); save(); };
+
+  const handleTest = async () => {
+    setTesting(true); setError(''); setNotice(''); setTestResult(null);
+    try {
+      setTestResult({ ok: true, ...(await adminFetch('/api/square/test', { method: 'POST' })) });
+    } catch (err) {
+      setTestResult({ ok: false, message: err.message });
+    } finally {
+      setTesting(false);
+    }
+  };
+
+  const card = { background: 'white', border: '1px solid var(--gray-200)', borderRadius: '16px', padding: '1.5rem', marginBottom: '1.5rem' };
+  const fromEnv = Object.values(meta.sources).includes('env');
+  const hint = { fontSize: '0.75rem', color: 'var(--gray-500)', marginTop: '0.35rem' };
+
+  if (loading) return <p style={{ color: 'var(--gray-600)' }}>Loading Square settings…</p>;
+
+  return (
+    <div>
+      <h3 style={{ fontFamily: 'var(--font-display)', color: 'var(--navy)', marginBottom: '0.4rem' }}>Square Settings</h3>
+      <p style={{ color: 'var(--gray-600)', fontSize: '0.88rem', marginBottom: '1.2rem' }}>
+        Credentials used to take donations. Get them from the{' '}
+        <a href="https://developer.squareup.com/apps" target="_blank" rel="noreferrer" style={{ color: 'var(--teal)' }}>Square Developer Dashboard</a>.
+      </p>
+
+      {fromEnv && (
+        <div className="payment-notice">
+          Some values are currently coming from server environment variables. Saving here stores them in the database, and those take priority from then on.
+        </div>
+      )}
+
+      <form onSubmit={handleSubmit} style={card}>
+        <div className="form-row">
+          <div className="form-group">
+            <label className="form-label">Environment</label>
+            <select className="form-input" value={form.environment} onChange={(e) => setForm({ ...form, environment: e.target.value })}>
+              <option value="sandbox">Sandbox (testing — no real money)</option>
+              <option value="production">Production (live payments)</option>
+            </select>
+            {form.environment === 'production' && <p style={{ ...hint, color: '#b45309' }}>Live mode: real cards will be charged.</p>}
+          </div>
+          <div className="form-group">
+            <label className="form-label">Application ID</label>
+            <input className="form-input" value={form.applicationId} onChange={(e) => setForm({ ...form, applicationId: e.target.value })}
+              placeholder={form.environment === 'sandbox' ? 'sandbox-sq0idb-…' : 'sq0idp-…'} autoComplete="off" />
+            <p style={hint}>Public — used by the card form on the Donate page.</p>
+          </div>
+        </div>
+        <div className="form-row">
+          <div className="form-group">
+            <label className="form-label">Location ID</label>
+            <input className="form-input" value={form.locationId} onChange={(e) => setForm({ ...form, locationId: e.target.value })} placeholder="e.g. L1ABC23DEF456" autoComplete="off" />
+            <p style={hint}>The Square location payments are taken against.</p>
+          </div>
+          <div className="form-group">
+            <label className="form-label">Access Token (secret)</label>
+            <input className="form-input" type="password" value={form.accessToken} onChange={(e) => setForm({ ...form, accessToken: e.target.value })}
+              placeholder={meta.accessTokenSet ? `Saved — ends in ${meta.accessTokenLast4} (leave blank to keep)` : 'EAAA…'} autoComplete="new-password" />
+            <p style={hint}>
+              Stored encrypted and never shown again.
+              {meta.accessTokenSet && (
+                <> <button type="button" onClick={() => window.confirm('Remove the saved access token? Donations will stop being charged until a new one is added.') && save({ clearAccessToken: true })}
+                  style={{ ...linkBtn('#dc2626'), fontSize: '0.75rem' }}>Remove saved token</button></>
+              )}
+            </p>
+          </div>
+        </div>
+
+        {error && <div className="payment-error">{error}</div>}
+        {notice && <div style={{ background: 'rgba(16,185,129,0.1)', border: '1px solid #10b981', color: '#065f46', borderRadius: '8px', padding: '0.7rem 1rem', marginBottom: '1rem', fontSize: '0.85rem' }}>{notice}</div>}
+
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.75rem', alignItems: 'center' }}>
+          <button className="donate-btn" type="submit" disabled={saving} style={{ width: 'auto', padding: '0.7rem 1.8rem', opacity: saving ? 0.7 : 1 }}>
+            {saving ? 'Saving…' : 'Save Settings'}
+          </button>
+          <button className="btn-outline" type="button" onClick={handleTest} disabled={testing || !meta.accessTokenSet}
+            title={meta.accessTokenSet ? '' : 'Save an access token first'}>
+            {testing ? 'Testing…' : 'Test Connection'}
+          </button>
+        </div>
+      </form>
+
+      {testResult && !testResult.ok && <div className="payment-error">Connection failed: {testResult.message}</div>}
+      {testResult && testResult.ok && (
+        <div style={{ background: 'rgba(16,185,129,0.1)', border: '1px solid #10b981', borderRadius: '12px', padding: '1rem 1.2rem', fontSize: '0.85rem', color: '#065f46' }}>
+          <strong>Connected to Square ({testResult.environment}).</strong>{' '}
+          {testResult.locationId
+            ? (testResult.locationFound
+                ? <>Location “{testResult.locationName}” found.</>
+                : <span style={{ color: '#b91c1c' }}>But Location ID “{testResult.locationId}” isn't on this account — pick one below.</span>)
+            : 'No Location ID saved yet — pick one below.'}
+          {testResult.locations.length > 0 && (
+            <ul style={{ marginTop: '0.6rem', paddingLeft: '1.2rem', color: 'var(--gray-700)' }}>
+              {testResult.locations.map((l) => (
+                <li key={l.id}>
+                  {l.name} — <code>{l.id}</code>{' '}
+                  {l.id !== form.locationId && (
+                    <button type="button" onClick={() => setForm({ ...form, locationId: l.id })} style={{ ...linkBtn('var(--teal)'), fontSize: '0.78rem' }}>Use this</button>
+                  )}
+                </li>
+              ))}
+            </ul>
+          )}
         </div>
       )}
     </div>
@@ -583,7 +839,7 @@ const DatabaseTablesTab = () => {
           {tables.map((t) => <option key={t} value={t}>{t}</option>)}
         </select>
         <p style={{ fontSize: '0.75rem', color: 'var(--gray-500)', marginTop: '0.4rem' }}>
-          Admin Users is managed on its own tab instead of here, for safety.
+          Users and Square Settings are managed on their own tabs instead of here, for safety.
         </p>
       </div>
 
@@ -692,12 +948,64 @@ const DatabaseTablesTab = () => {
   );
 };
 
+// ─── Change own password (any role) ─────────────────────────────────────────
+const ChangePasswordCard = ({ onDone }) => {
+  const [form, setForm] = useState({ currentPassword: '', newPassword: '', confirm: '' });
+  const [error, setError] = useState('');
+  const [saving, setSaving] = useState(false);
+  const [done, setDone] = useState(false);
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    setError('');
+    if (form.newPassword !== form.confirm) { setError("The new passwords don't match."); return; }
+    setSaving(true);
+    try {
+      await adminFetch('/api/admin-auth/change-password', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ currentPassword: form.currentPassword, newPassword: form.newPassword }),
+      });
+      setDone(true);
+      setTimeout(onDone, 1500);
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return (
+    <form onSubmit={handleSubmit} style={{ background: 'white', border: '1px solid var(--gray-200)', borderRadius: '16px', padding: '1.5rem', marginBottom: '1.5rem', maxWidth: 480 }}>
+      <h4 style={{ fontFamily: 'var(--font-display)', color: 'var(--navy)', marginBottom: '1rem' }}>Change your password</h4>
+      <div className="form-group">
+        <label className="form-label">Current password</label>
+        <input className="form-input" type="password" value={form.currentPassword} onChange={(e) => setForm({ ...form, currentPassword: e.target.value })} required autoComplete="current-password" />
+      </div>
+      <div className="form-group">
+        <label className="form-label">New password (min 8 characters)</label>
+        <input className="form-input" type="password" value={form.newPassword} onChange={(e) => setForm({ ...form, newPassword: e.target.value })} required minLength={8} autoComplete="new-password" />
+      </div>
+      <div className="form-group">
+        <label className="form-label">Confirm new password</label>
+        <input className="form-input" type="password" value={form.confirm} onChange={(e) => setForm({ ...form, confirm: e.target.value })} required autoComplete="new-password" />
+      </div>
+      {error && <div className="payment-error">{error}</div>}
+      {done && <div style={{ color: '#065f46', fontSize: '0.85rem', marginBottom: '0.8rem' }}>Password updated.</div>}
+      <button className="donate-btn" type="submit" disabled={saving || done} style={{ opacity: saving ? 0.7 : 1 }}>
+        {saving ? 'Saving…' : 'Update Password'}
+      </button>
+    </form>
+  );
+};
+
 // ─── Main Admin page ─────────────────────────────────────────────────────────
 const AdminPage = () => {
   const [checkingSession, setCheckingSession] = useState(true);
   const [admin, setAdmin] = useState(null);
   const [tab, setTab] = useState('donations');
   const isSuperAdmin = admin?.role === 'superadmin';
+  const canEditProjects = ['superadmin', 'admin', 'editor'].includes(admin?.role);
+  const [showPassword, setShowPassword] = useState(false);
 
   useEffect(() => {
     adminFetch('/api/admin-auth/me')
@@ -716,7 +1024,7 @@ const AdminPage = () => {
       <section className="admin-hero">
         <div className="section-inner" style={{ textAlign: 'center' }}>
           <h1 style={{ fontFamily: 'var(--font-display)', color: 'white', marginBottom: '0.75rem' }}>Admin Console</h1>
-          <p style={{ color: 'rgba(255,255,255,0.85)' }}>Manage donations and projects for Headstart Education</p>
+          <p style={{ color: 'rgba(255,255,255,0.85)' }}>Manage donations, projects, users and payments for Headstart Education</p>
         </div>
       </section>
 
@@ -731,19 +1039,26 @@ const AdminPage = () => {
           <div className="section-inner">
             <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', justifyContent: 'space-between', gap: '0.5rem', marginBottom: '1.5rem' }}>
               <p style={{ color: 'var(--gray-600)' }}>Logged in as <strong>{admin.name}</strong> ({admin.role})</p>
-              <button className="btn-outline" onClick={handleLogout}>Logout</button>
+              <div style={{ display: 'flex', gap: '0.5rem' }}>
+                <button className="btn-outline" onClick={() => setShowPassword((v) => !v)}>{showPassword ? 'Close' : 'Change Password'}</button>
+                <button className="btn-outline" onClick={handleLogout}>Logout</button>
+              </div>
             </div>
+
+            {showPassword && <ChangePasswordCard onDone={() => setShowPassword(false)} />}
 
             <div className="tabs">
               <div className={`tab${tab === 'donations' ? ' active' : ''}`} onClick={() => setTab('donations')}>Donations</div>
               <div className={`tab${tab === 'projects' ? ' active' : ''}`} onClick={() => setTab('projects')}>Projects</div>
-              {isSuperAdmin && <div className={`tab${tab === 'admins' ? ' active' : ''}`} onClick={() => setTab('admins')}>Admin Users</div>}
+              {isSuperAdmin && <div className={`tab${tab === 'users' ? ' active' : ''}`} onClick={() => setTab('users')}>Users</div>}
+              {isSuperAdmin && <div className={`tab${tab === 'square' ? ' active' : ''}`} onClick={() => setTab('square')}>Square Settings</div>}
               {isSuperAdmin && <div className={`tab${tab === 'database' ? ' active' : ''}`} onClick={() => setTab('database')}>Database Tables</div>}
             </div>
 
             {tab === 'donations' && <DonationsTab />}
-            {tab === 'projects' && <ProjectsTab />}
-            {tab === 'admins' && isSuperAdmin && <AdminUsersTab currentUsername={admin.username} />}
+            {tab === 'projects' && <ProjectsTab canEdit={canEditProjects} />}
+            {tab === 'users' && isSuperAdmin && <UsersTab currentUsername={admin.username} />}
+            {tab === 'square' && isSuperAdmin && <SquareSettingsTab />}
             {tab === 'database' && isSuperAdmin && <DatabaseTablesTab />}
           </div>
         </section>

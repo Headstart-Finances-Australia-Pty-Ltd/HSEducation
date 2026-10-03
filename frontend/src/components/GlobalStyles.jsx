@@ -232,15 +232,15 @@ const GlobalStyles = () => (
     .cards-2 { grid-template-columns: repeat(2, 1fr); }
 
     /* MODAL / POPUP */
-    .modal-overlay { position: fixed; inset: 0; background: rgba(15,23,42,0.55); display: flex; align-items: center; justify-content: center; z-index: 1000; padding: 1.5rem; animation: fadeIn 0.18s ease; }
-    .modal-dialog { background: white; border-radius: 16px; width: 100%; box-shadow: 0 20px 60px rgba(0,0,0,0.3); max-height: 90vh; overflow-y: auto; animation: popIn 0.2s ease; }
+    .modal-overlay { position: fixed; inset: 0; background: rgba(15,23,42,0.55); display: flex; align-items: center; justify-content: center; z-index: 2000; padding: 1.5rem; overflow-y: auto; animation: fadeIn 0.18s ease; }
+    .modal-dialog { background: white; border-radius: 16px; width: 100%; box-shadow: 0 20px 60px rgba(0,0,0,0.3); max-height: calc(100vh - 3rem); max-height: calc(100dvh - 3rem); margin: auto; overflow-y: auto; animation: popIn 0.2s ease; }
     .modal-header { display: flex; align-items: center; justify-content: space-between; padding: 1.25rem 1.5rem; border-bottom: 1px solid var(--gray-200); }
     .modal-title { font-family: var(--font-display); font-weight: 600; font-size: 1.1rem; color: var(--navy); }
     .modal-close { background: none; border: none; cursor: pointer; color: var(--gray-500); display: flex; padding: 4px; border-radius: 6px; }
     .modal-close:hover { background: var(--gray-100); color: var(--gray-800); }
     .modal-body { padding: 1.5rem; }
     @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
-    @keyframes popIn { from { opacity: 0; transform: scale(0.96) translateY(8px); } to { opacity: 1; transform: scale(1) translateY(0); } }
+    @keyframes popIn { from { opacity: 0; transform: scale(0.96) translateY(8px); } to { opacity: 1; transform: none; } }
 
     /* SQUARE PAYMENT POPUP */
     .donate-summary { background: rgba(13,115,119,0.07); border: 1px solid var(--teal); border-radius: 10px; padding: 0.75rem 1rem; margin-bottom: 1.2rem; font-size: 0.92rem; color: var(--navy); text-align: center; }
@@ -268,8 +268,8 @@ const GlobalStyles = () => (
     .admin-status-failed { background: rgba(220,38,38,0.1); color: #dc2626; }
 
     /* PAGE ANIMATION */
-    .page-enter { animation: fadeUp 0.45s ease forwards; }
-    @keyframes fadeUp { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
+    .page-enter { animation: fadeUp 0.45s ease both; }
+    @keyframes fadeUp { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: none; } }
 
     /* RESPONSIVE */
     @media (max-width: 960px) {

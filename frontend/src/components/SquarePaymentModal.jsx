@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import Modal from './Modal';
 import Icon from './Icon';
-import { getSquarePayments, isSquareConfigured } from '../square';
+import { getSquarePayments, loadSquareConfig } from '../square';
 
 // Popup for entering payment details via Square's hosted, PCI-compliant
 // fields. We never see or store the raw card/bank number — Square's SDK
@@ -13,6 +13,8 @@ const SquarePaymentModal = ({ open, amount, frequency, onClose, onTokenized }) =
   const [bankAvailable, setBankAvailable] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError]     = useState('');
+  // null = still checking, true/false once the backend has answered
+  const [squareReady, setSquareReady] = useState(null);
 
   const paymentsRef = useRef(null);
   const cardRef      = useRef(null);
@@ -28,6 +30,9 @@ const SquarePaymentModal = ({ open, amount, frequency, onClose, onTokenized }) =
 
     (async () => {
       try {
+        const cfg = await loadSquareConfig({ force: true });
+        if (!cancelled) setSquareReady(!!cfg.configured);
+        if (!cfg.configured) return; // the notice above explains; no form to mount
         const payments = await getSquarePayments();
         paymentsRef.current = payments;
 
@@ -92,11 +97,10 @@ const SquarePaymentModal = ({ open, amount, frequency, onClose, onTokenized }) =
 
   return (
     <Modal open={open} onClose={submitting ? undefined : onClose} title="Secure Payment" width={460}>
-      {!isSquareConfigured && (
+      {squareReady === false && (
         <div className="payment-notice">
-          ⚠️ Square is not configured yet. Add <code>REACT_APP_SQUARE_APPLICATION_ID</code> and{' '}
-          <code>REACT_APP_SQUARE_LOCATION_ID</code> to <code>frontend/.env</code> — see README for setup steps.
-          This form will not be able to take a real payment until that's done.
+          ⚠️ Online card payments aren't available right now. Please contact{' '}
+          <a href="mailto:giving@hseducation.com.au">giving@hseducation.com.au</a> to make your donation.
         </div>
       )}
 
@@ -123,7 +127,7 @@ const SquarePaymentModal = ({ open, amount, frequency, onClose, onTokenized }) =
         )}
       </div>
 
-      {!ready && !error && <div className="payment-loading">Loading secure payment form…</div>}
+      {!ready && !error && squareReady !== false && <div className="payment-loading">Loading secure payment form…</div>}
 
       {/* Both containers stay mounted so Square's iframes don't get re-created;
           we just show/hide with CSS so tokenization keeps working. */}

@@ -1,34 +1,70 @@
 // ============================================================
-// Square Web Payments SDK — configuration
+// Square Web Payments SDK — runtime configuration
 // ============================================================
-// Set these in a .env file at frontend/.env (see .env.example).
-// They are PUBLIC identifiers — safe to ship in the frontend bundle.
-// The SECRET access token lives only on the backend (backend/js/.env).
+// The Application ID, Location ID and environment are managed by a super
+// admin in Admin Console → Square Settings and fetched from the backend
+// at runtime (GET /api/square/public-config) — nothing needs rebuilding
+// when they change. They are PUBLIC identifiers; the secret access token
+// never leaves the server.
 //
-//   REACT_APP_SQUARE_APPLICATION_ID = your Square Application ID
-//   REACT_APP_SQUARE_LOCATION_ID    = your Square Location ID
-//
-// Get both from the Square Developer Dashboard: https://developer.squareup.com/apps
-// Use the "Sandbox" values while testing (they start with "sandbox-sq0idb-").
+// For backwards compatibility, if the backend has nothing configured the
+// old build-time variables are still honoured as a fallback:
+//   REACT_APP_SQUARE_APPLICATION_ID, REACT_APP_SQUARE_LOCATION_ID,
+//   REACT_APP_SQUARE_ENVIRONMENT  ("sandbox" default | "production")
 // ============================================================
+import API_URL from './config';
 
-export const SQUARE_APPLICATION_ID =
-  process.env.REACT_APP_SQUARE_APPLICATION_ID || 'sandbox-sq0idb-REPLACE_WITH_YOUR_APP_ID';
+const SDK_URLS = {
+  sandbox:    'https://sandbox.web.squarecdn.com/v1/square.js',
+  production: 'https://web.squarecdn.com/v1/square.js',
+};
 
-export const SQUARE_LOCATION_ID =
-  process.env.REACT_APP_SQUARE_LOCATION_ID || 'REPLACE_WITH_YOUR_LOCATION_ID';
+function envFallback() {
+  const applicationId = process.env.REACT_APP_SQUARE_APPLICATION_ID || '';
+  const locationId    = process.env.REACT_APP_SQUARE_LOCATION_ID || '';
+  const usable = (v) => v && !v.includes('REPLACE_WITH');
+  return {
+    configured: !!(usable(applicationId) && usable(locationId)),
+    applicationId,
+    locationId,
+    environment: process.env.REACT_APP_SQUARE_ENVIRONMENT === 'production' ? 'production' : 'sandbox',
+  };
+}
 
-// Becomes true once real-looking credentials have been configured.
-// Used to show a friendly setup notice instead of a confusing SDK error.
-export const isSquareConfigured =
-  !SQUARE_APPLICATION_ID.includes('REPLACE_WITH') &&
-  !SQUARE_LOCATION_ID.includes('REPLACE_WITH');
+let configPromise = null;
+
+// Resolves { configured, applicationId, locationId, environment }.
+// Cached for the page's lifetime; pass { force: true } to re-fetch.
+export function loadSquareConfig({ force = false } = {}) {
+  if (!configPromise || force) {
+    configPromise = fetch(`${API_URL}/api/square/public-config`)
+      .then((res) => (res.ok ? res.json() : Promise.reject(new Error('config request failed'))))
+      .then((cfg) => (cfg.configured ? cfg : (envFallback().configured ? envFallback() : cfg)))
+      .catch(() => envFallback());
+  }
+  return configPromise;
+}
+
+// Injects the correct SDK <script> (sandbox vs production) the first time
+// it's needed, so switching environment in the console just works.
+function loadSdk(environment) {
+  if (window.Square) return Promise.resolve();
+  return new Promise((resolve, reject) => {
+    const script = document.createElement('script');
+    script.src = SDK_URLS[environment] || SDK_URLS.sandbox;
+    script.async = true;
+    script.onload = () => resolve();
+    script.onerror = () => reject(new Error('Square.js failed to load. Check your internet connection and try again.'));
+    document.head.appendChild(script);
+  });
+}
 
 // Loads (or reuses) the Square payments object.
-// Requires the Square Web Payments SDK <script> tag in public/index.html.
 export async function getSquarePayments() {
-  if (!window.Square) {
-    throw new Error('Square.js failed to load. Check your internet connection and that the Square <script> tag is present in index.html.');
+  const cfg = await loadSquareConfig();
+  if (!cfg.configured) {
+    throw new Error('Online payments are not set up yet. Please contact giving@hseducation.com.au to donate.');
   }
-  return window.Square.payments(SQUARE_APPLICATION_ID, SQUARE_LOCATION_ID);
+  await loadSdk(cfg.environment);
+  return window.Square.payments(cfg.applicationId, cfg.locationId);
 }

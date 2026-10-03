@@ -9,12 +9,10 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,300;0,9..144,600;0,9..144,700;1,9..144,400&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
     <!--
-      Square Web Payments SDK.
-      This is the SANDBOX script — swap to https://web.squarecdn.com/v1/square.js
-      when you go live with production Square credentials.
-      See README.md > "Square Payments Setup" for configuration steps.
+      The Square Web Payments SDK is loaded on demand by src/square.js, using
+      the Sandbox or Production script depending on the environment chosen in
+      Admin Console → Square Settings.
     -->
-    <script src="https://sandbox.web.squarecdn.com/v1/square.js"></script>
   </head>
   <body>
     <div id="root"></div>

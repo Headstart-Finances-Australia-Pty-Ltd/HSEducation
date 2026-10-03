@@ -1,9 +1,13 @@
+import { useState } from 'react';
 import IMGS from '../images';
 import Icon from '../components/Icon';
+import Modal from '../components/Modal';
 
 const initials = (name) => name.split(' ').map(w => w[0]).join('').slice(0, 2);
 
-const AboutPage = ({ setPage }) => (
+const AboutPage = ({ setPage }) => {
+  const [thanksOpen, setThanksOpen] = useState(false);
+  return (
   <div className="page-enter">
     <div className="page-hero">
       <div className="page-hero-bg"><img src={IMGS.aboutMission} alt="Students with hands raised"/></div>
@@ -133,13 +137,19 @@ const AboutPage = ({ setPage }) => (
             <div className="form-group"><label className="form-label">Email</label><input className="form-input" type="email" placeholder="jane@example.com.au"/></div>
             <div className="form-group"><label className="form-label">Organisation (optional)</label><input className="form-input" placeholder="School, Company, etc."/></div>
             <div className="form-group"><label className="form-label">Message</label><textarea className="form-input" rows={4} placeholder="How can we help?" style={{resize:'vertical'}}/></div>
-            <button className="donate-btn" onClick={() => alert('Thank you! We\'ll be in touch shortly.')}>Send Message</button>
+            <button className="donate-btn" onClick={() => setThanksOpen(true)}>Send Message</button>
           </div>
         </div>
       </div>
     </section>
+    <Modal open={thanksOpen} onClose={() => setThanksOpen(false)} title="Message sent" width={400}>
+      <p style={{ marginBottom: '1.2rem', color: 'var(--gray-700)' }}>Thank you! We'll be in touch shortly.</p>
+      <button className="donate-btn" onClick={() => setThanksOpen(false)}>OK</button>
+    </Modal>
   </div>
-);
+  );
+};
+
 
 
 export default AboutPage;
