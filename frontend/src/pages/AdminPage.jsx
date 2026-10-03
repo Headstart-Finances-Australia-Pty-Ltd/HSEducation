@@ -998,6 +998,183 @@ const ChangePasswordCard = ({ onDone }) => {
   );
 };
 
+// ─── System Email Settings ───────────────────────────────────────────────────
+// SMTP details used to send donation receipts and admin notifications. The
+// password is stored encrypted and never sent back to the browser.
+const EmailSettingsTab = () => {
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+  const [testing, setTesting] = useState(false);
+  const [error, setError] = useState('');
+  const [notice, setNotice] = useState('');
+  const [testResult, setTestResult] = useState(null);
+  const [testTo, setTestTo] = useState('');
+  const [meta, setMeta] = useState({ passwordSet: false, passwordLast4: null, sources: {}, configured: false });
+  const [form, setForm] = useState({
+    host: '', port: 587, secure: false, user: '', password: '',
+    fromName: 'Headstart Education', fromAddress: '', replyTo: '', adminNotify: '',
+    sendReceipts: true, notifyAdmin: true,
+  });
+
+  const load = useCallback(async () => {
+    setLoading(true); setError('');
+    try {
+      const s = await adminFetch('/api/email/settings');
+      setMeta({ passwordSet: s.passwordSet, passwordLast4: s.passwordLast4, sources: s.sources || {}, configured: s.configured });
+      setForm({
+        host: s.host, port: s.port, secure: s.secure, user: s.user, password: '',
+        fromName: s.fromName, fromAddress: s.fromAddress, replyTo: s.replyTo, adminNotify: s.adminNotify,
+        sendReceipts: s.sendReceipts, notifyAdmin: s.notifyAdmin,
+      });
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  useEffect(() => { load(); }, [load]);
+
+  const save = async (extra = {}) => {
+    setSaving(true); setError(''); setNotice(''); setTestResult(null);
+    try {
+      await adminFetch('/api/email/settings', {
+        method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ ...form, ...extra }),
+      });
+      setNotice(extra.clearPassword ? 'Saved password removed.' : 'Email settings saved. They take effect immediately — no restart needed.');
+      await load();
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleSubmit = (e) => { e.preventDefault(); save(); };
+
+  const handleTest = async () => {
+    setTesting(true); setError(''); setNotice(''); setTestResult(null);
+    try {
+      setTestResult({ ok: true, ...(await adminFetch('/api/email/test', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ to: testTo }),
+      })) });
+    } catch (err) {
+      setTestResult({ ok: false, message: err.message });
+    } finally {
+      setTesting(false);
+    }
+  };
+
+  const set = (k) => (e) => setForm({ ...form, [k]: e.target.type === 'checkbox' ? e.target.checked : e.target.value });
+  const card = { background: 'white', border: '1px solid var(--gray-200)', borderRadius: '16px', padding: '1.5rem', marginBottom: '1.5rem' };
+  const hint = { fontSize: '0.75rem', color: 'var(--gray-500)', marginTop: '0.35rem' };
+  const checkRow = { display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.88rem', color: 'var(--gray-700)', marginBottom: '0.6rem' };
+  const fromEnv = Object.values(meta.sources).includes('env');
+
+  if (loading) return <p style={{ color: 'var(--gray-600)' }}>Loading email settings…</p>;
+
+  return (
+    <div>
+      <h3 style={{ fontFamily: 'var(--font-display)', color: 'var(--navy)', marginBottom: '0.4rem' }}>System Email Settings</h3>
+      <p style={{ color: 'var(--gray-600)', fontSize: '0.88rem', marginBottom: '1.2rem' }}>
+        The mail server (SMTP) this website uses to email donation receipts to donors and notify your team.
+        Works with any provider — e.g. Google Workspace, Microsoft 365, SendGrid, Mailgun, Amazon SES.
+      </p>
+
+      {!meta.configured && <div className="payment-notice">Email is not configured yet — donors won't receive receipts until you save the details below.</div>}
+      {fromEnv && <div className="payment-notice">Some values currently come from server environment variables. Saving here stores them in the database, and those take priority from then on.</div>}
+
+      <form onSubmit={handleSubmit} style={card}>
+        <div className="form-row">
+          <div className="form-group">
+            <label className="form-label">SMTP Host</label>
+            <input className="form-input" value={form.host} onChange={set('host')} placeholder="smtp.example.com" autoComplete="off" />
+          </div>
+          <div className="form-group">
+            <label className="form-label">Port</label>
+            <input className="form-input" type="number" value={form.port} onChange={set('port')} placeholder="587" />
+            <p style={hint}>587 (STARTTLS) is most common; 465 uses SSL/TLS.</p>
+          </div>
+        </div>
+        <div className="form-row">
+          <div className="form-group">
+            <label className="form-label">Username</label>
+            <input className="form-input" value={form.user} onChange={set('user')} placeholder="apikey or full email address" autoComplete="off" />
+          </div>
+          <div className="form-group">
+            <label className="form-label">Password (secret)</label>
+            <input className="form-input" type="password" value={form.password} onChange={set('password')}
+              placeholder={meta.passwordSet ? `Saved — ends in ${meta.passwordLast4} (leave blank to keep)` : 'SMTP password or app password'} autoComplete="new-password" />
+            <p style={hint}>
+              Stored encrypted and never shown again.
+              {meta.passwordSet && (
+                <> <button type="button" onClick={() => window.confirm('Remove the saved SMTP password?') && save({ clearPassword: true })}
+                  style={{ ...linkBtn('#dc2626'), fontSize: '0.75rem' }}>Remove saved password</button></>
+              )}
+            </p>
+          </div>
+        </div>
+        <label style={checkRow}>
+          <input type="checkbox" checked={form.secure} onChange={set('secure')} />
+          Use SSL/TLS from the start (tick for port 465; leave off for 587)
+        </label>
+
+        <hr style={{ border: 'none', borderTop: '1px solid var(--gray-200)', margin: '1rem 0' }} />
+
+        <div className="form-row">
+          <div className="form-group">
+            <label className="form-label">“From” Name</label>
+            <input className="form-input" value={form.fromName} onChange={set('fromName')} placeholder="Headstart Education" />
+          </div>
+          <div className="form-group">
+            <label className="form-label">“From” Email Address</label>
+            <input className="form-input" type="email" value={form.fromAddress} onChange={set('fromAddress')} placeholder="giving@hseducation.com.au" />
+            <p style={hint}>Must be an address your mail provider allows you to send from.</p>
+          </div>
+        </div>
+        <div className="form-row">
+          <div className="form-group">
+            <label className="form-label">Reply-To (optional)</label>
+            <input className="form-input" type="email" value={form.replyTo} onChange={set('replyTo')} placeholder="info@hseducation.com.au" />
+          </div>
+          <div className="form-group">
+            <label className="form-label">Notify Admin At</label>
+            <input className="form-input" type="email" value={form.adminNotify} onChange={set('adminNotify')} placeholder="giving@hseducation.com.au" />
+            <p style={hint}>Where “new donation” alerts are sent.</p>
+          </div>
+        </div>
+        <label style={checkRow}><input type="checkbox" checked={form.sendReceipts} onChange={set('sendReceipts')} /> Email a thank-you receipt to donors after a successful payment</label>
+        <label style={{ ...checkRow, marginBottom: '1.2rem' }}><input type="checkbox" checked={form.notifyAdmin} onChange={set('notifyAdmin')} /> Email me when a new donation is received</label>
+
+        {error && <div className="payment-error">{error}</div>}
+        {notice && <div style={{ background: 'rgba(16,185,129,0.1)', border: '1px solid #10b981', color: '#065f46', borderRadius: '8px', padding: '0.7rem 1rem', marginBottom: '1rem', fontSize: '0.85rem' }}>{notice}</div>}
+
+        <button className="donate-btn" type="submit" disabled={saving} style={{ width: 'auto', padding: '0.7rem 1.8rem', opacity: saving ? 0.7 : 1 }}>
+          {saving ? 'Saving…' : 'Save Settings'}
+        </button>
+      </form>
+
+      <div style={card}>
+        <h4 style={{ fontFamily: 'var(--font-display)', color: 'var(--navy)', marginBottom: '0.4rem' }}>Test your settings</h4>
+        <p style={{ ...hint, marginTop: 0, marginBottom: '0.8rem' }}>Save first, then check the connection — add an address to also send a test email.</p>
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.75rem', alignItems: 'center' }}>
+          <input className="form-input" type="email" value={testTo} onChange={(e) => setTestTo(e.target.value)} placeholder="send a test to… (optional)" style={{ maxWidth: 320 }} />
+          <button className="btn-outline" type="button" onClick={handleTest} disabled={testing || !form.host}>
+            {testing ? 'Testing…' : (testTo ? 'Send Test Email' : 'Test Connection')}
+          </button>
+        </div>
+        {testResult && !testResult.ok && <div className="payment-error" style={{ marginTop: '1rem', marginBottom: 0 }}>Failed: {testResult.message}</div>}
+        {testResult && testResult.ok && (
+          <div style={{ marginTop: '1rem', background: 'rgba(16,185,129,0.1)', border: '1px solid #10b981', borderRadius: '8px', padding: '0.7rem 1rem', fontSize: '0.85rem', color: '#065f46' }}>
+            Connected to {testResult.host}:{testResult.port}.{testResult.sent ? <> Test email sent to <strong>{testResult.to}</strong> — check the inbox (and spam).</> : ' Login accepted.'}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+};
+
+
 // ─── Main Admin page ─────────────────────────────────────────────────────────
 const AdminPage = () => {
   const [checkingSession, setCheckingSession] = useState(true);
@@ -1052,6 +1229,7 @@ const AdminPage = () => {
               <div className={`tab${tab === 'projects' ? ' active' : ''}`} onClick={() => setTab('projects')}>Projects</div>
               {isSuperAdmin && <div className={`tab${tab === 'users' ? ' active' : ''}`} onClick={() => setTab('users')}>Users</div>}
               {isSuperAdmin && <div className={`tab${tab === 'square' ? ' active' : ''}`} onClick={() => setTab('square')}>Square Settings</div>}
+              {isSuperAdmin && <div className={`tab${tab === 'email' ? ' active' : ''}`} onClick={() => setTab('email')}>Email Settings</div>}
               {isSuperAdmin && <div className={`tab${tab === 'database' ? ' active' : ''}`} onClick={() => setTab('database')}>Database Tables</div>}
             </div>
 
@@ -1059,6 +1237,7 @@ const AdminPage = () => {
             {tab === 'projects' && <ProjectsTab canEdit={canEditProjects} />}
             {tab === 'users' && isSuperAdmin && <UsersTab currentUsername={admin.username} />}
             {tab === 'square' && isSuperAdmin && <SquareSettingsTab />}
+            {tab === 'email' && isSuperAdmin && <EmailSettingsTab />}
             {tab === 'database' && isSuperAdmin && <DatabaseTablesTab />}
           </div>
         </section>

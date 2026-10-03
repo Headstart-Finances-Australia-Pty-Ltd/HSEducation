@@ -11,6 +11,7 @@ COPY backend/js/package.json backend/js/package-lock.json* ./
 RUN npm install --omit=dev
 
 COPY backend/js/ ./
+COPY backend/app_db ./app_db
 
 HEALTHCHECK --interval=30s --timeout=5s --start-period=10s --retries=3 \
   CMD wget -qO- http://localhost:${PORT:-5000}/healthz || exit 1

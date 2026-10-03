@@ -1,8 +1,9 @@
 // ============================================================
 // Headstart Education — Database Layer
 // Connects to Neon PostgreSQL (or any Postgres) via DATABASE_URL.
-// Falls back to an in-memory store if no database is reachable,
-// so the app still runs for quick local testing without one.
+// Retries (Neon may be waking up) and falls back to an in-memory store
+// meanwhile, so the app still starts; it switches to Postgres by itself
+// as soon as the connection succeeds.
 // ============================================================
 
 const { Pool } = require('pg');
@@ -28,8 +29,23 @@ const memStore = {
 // connection details — copy it straight from the Neon dashboard). Falls
 // back to assembling one from discrete DB_* vars for a plain local Postgres
 // install that isn't using a connection string.
+//
+// The value is cleaned up first, because hosting dashboards (Northflank,
+// etc.) store exactly what was pasted: Neon's "Connection string" box can
+// copy as  psql 'postgresql://…'  and people often paste surrounding quotes
+// or a trailing newline. Any of those make the URL invalid.
+function cleanUrl(raw) {
+  if (!raw) return '';
+  let v = String(raw).trim();
+  v = v.replace(/^psql\s+/i, '');                 // "psql 'postgresql://…'"
+  v = v.replace(/^DATABASE_URL\s*=\s*/i, '');      // "DATABASE_URL=postgresql://…"
+  v = v.replace(/^['"]+|['"]+$/g, '').trim();      // surrounding quotes
+  return v;
+}
+
 function resolveConnectionString() {
-  if (process.env.DATABASE_URL) return process.env.DATABASE_URL;
+  const fromEnv = cleanUrl(process.env.DATABASE_URL);
+  if (fromEnv) return fromEnv;
   const host = process.env.DB_HOST || 'localhost';
   const port = process.env.DB_PORT || '5432';
   const name = process.env.DB_NAME || 'hseducation';
@@ -41,12 +57,12 @@ function resolveConnectionString() {
 // node-postgres re-parses `connectionString` and lets any SSL mode embedded
 // in it (e.g. Neon's `?sslmode=require`) silently override an explicit
 // `ssl` option passed alongside it, which can crash the driver. Strip it
-// out of the URL and set SSL explicitly instead — same approach Kutumb uses.
+// out of the URL and set SSL explicitly instead. `channel_binding` is also
+// dropped — Neon adds it to copied strings, node-postgres doesn't use it.
 function stripSslParams(connectionString) {
   try {
     const url = new URL(connectionString);
-    url.searchParams.delete('sslmode');
-    url.searchParams.delete('ssl');
+    ['sslmode', 'ssl', 'channel_binding'].forEach((p) => url.searchParams.delete(p));
     return url.toString();
   } catch {
     return connectionString;
@@ -64,46 +80,100 @@ function buildPoolConfig() {
     ssl: isLocal ? false : { rejectUnauthorized: false },
     max: 5,
     idleTimeoutMillis: 10000,
-    connectionTimeoutMillis: 5000,
+    // Neon scales idle databases to zero; the first connection after a
+    // pause can take 5–10s to wake it, so a short timeout fails spuriously.
+    connectionTimeoutMillis: 20000,
   };
 }
 
-// ── Try PostgreSQL ────────────────────────────────────────
+// ── Connection state ──────────────────────────────────────
 let pool = null;
 let usingDB = false;
+let lastError = null;          // last connection/migration error message (no secrets)
+const hasDbConfig = !!(cleanUrl(process.env.DATABASE_URL) || process.env.DB_HOST);
 
-// Resolves once the initial connectivity check (below) has completed, so
-// startup code (like creating the default admin user) can wait for a
-// definitive answer instead of racing the async check.
+// Resolves once the *initial* connection attempts have finished (success or
+// not), so startup code (like creating the default admin user) can wait for
+// a definitive answer instead of racing the async check.
 let resolveReady;
 const readyPromise = new Promise((resolve) => { resolveReady = resolve; });
 
-try {
-  pool = new Pool(buildPoolConfig());
+const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
+// Remove anything that looks like credentials from an error before it is
+// logged or shown in the admin console.
+function safeMessage(err) {
+  return String(err && err.message ? err.message : err)
+    .replace(/(postgres(?:ql)?:\/\/)[^@\s]+@/gi, '$1***@');
+}
+
+async function connectOnce() {
+  if (pool) { try { await pool.end(); } catch { /* ignore */ } }
+  pool = new Pool(buildPoolConfig());
   pool.on('error', (err) => {
     // A dropped idle connection shouldn't crash the whole server.
-    console.error('⚠️  Unexpected PostgreSQL pool error:', err.message);
+    console.error('⚠️  Unexpected PostgreSQL pool error:', safeMessage(err));
   });
+  await pool.query('SELECT NOW()');
 
-  pool.query('SELECT NOW()')
-    .then(() => {
-      usingDB = true;
-      const which = process.env.DATABASE_URL ? 'Neon/DATABASE_URL' : 'DB_* vars';
-      console.log(`✅ PostgreSQL connected (${which}) — using database`);
-    })
-    .catch((err) => {
-      usingDB = false;
-      console.log('⚠️  PostgreSQL not available — using in-memory store');
-      console.log(`   Reason: ${err.message}`);
-      console.log('   See backend/js/.env.example to configure DATABASE_URL (Neon).');
-    })
-    .finally(() => resolveReady());
-
-} catch (e) {
-  console.log('⚠️  PostgreSQL not configured — using in-memory store');
-  resolveReady();
+  // Create/upgrade tables on every successful connect (idempotent) so a
+  // freshly-deployed container works with an empty Neon database without
+  // anyone having to run `npm run migrate` by hand.
+  try {
+    await require('./lib/ensureSchema')(pool);
+    lastError = null;
+  } catch (err) {
+    lastError = `Connected, but applying the schema failed: ${safeMessage(err)}`;
+    console.error('❌', lastError);
+  }
+  usingDB = true;
+  const which = process.env.DATABASE_URL ? 'DATABASE_URL' : 'DB_* vars';
+  console.log(`✅ PostgreSQL connected (${which}) — using database`);
 }
+
+async function connectWithRetry() {
+  const delays = [0, 3000, 6000, 10000];            // initial attempts
+  for (let i = 0; i < delays.length; i++) {
+    if (delays[i]) await sleep(delays[i]);
+    try {
+      await connectOnce();
+      return true;
+    } catch (err) {
+      lastError = safeMessage(err);
+      console.log(`⚠️  PostgreSQL connection attempt ${i + 1}/${delays.length} failed: ${lastError}`);
+    }
+  }
+  return false;
+}
+
+(async () => {
+  if (!hasDbConfig) {
+    lastError = 'DATABASE_URL is not set in this service\'s environment.';
+    console.log('⚠️  DATABASE_URL is not set — using in-memory store (nothing is saved).');
+    console.log('   Add DATABASE_URL (your Neon connection string) as a runtime variable on THIS service.');
+    resolveReady();
+    return;
+  }
+  const ok = await connectWithRetry();
+  if (!ok) {
+    console.log('⚠️  PostgreSQL not available yet — using in-memory store and retrying every 30s.');
+    console.log(`   Reason: ${lastError}`);
+  }
+  resolveReady();
+
+  // Keep trying in the background: once Neon becomes reachable the app
+  // switches over to it without a restart, and makes sure an admin exists.
+  while (!usingDB) {
+    await sleep(30000);
+    try {
+      await connectOnce();
+      try { await require('./bootstrapAdmin')(); } catch (e) { console.error('Admin bootstrap failed:', safeMessage(e)); }
+    } catch (err) {
+      lastError = safeMessage(err);
+      console.log(`⚠️  PostgreSQL retry failed: ${lastError}`);
+    }
+  }
+})();
 
 // ── Unified query interface ───────────────────────────────
 // Routes use db.query() and db.mem — automatically routes to
@@ -119,6 +189,10 @@ const db = {
 
   // Is database available?
   isConnected: () => usingDB,
+
+  // Why it isn't (null when connected) — shown in the Admin Console and /healthz.
+  lastError: () => (usingDB ? null : lastError),
+  hasConfig: () => hasDbConfig,
 
   // Resolves once the initial PostgreSQL connectivity check has finished —
   // await this before code that needs a definitive "DB or in-memory?" answer

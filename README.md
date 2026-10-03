@@ -421,3 +421,13 @@ A session lasts **12 hours**, matching the JWT's expiry, then you'll need to log
 | Founding directors | Harsh Singh (Chairman), Pramod Singh, Tavishi Makhija |
 
 ABN and DGR (tax-deductibility) status are intentionally not published on the site yet, since they aren't confirmed — add them to `LegalPage.jsx` and `Footer.jsx` once available.
+
+
+---
+
+## Northflank: database & email notes
+
+- **DATABASE_URL** must be set as a *runtime environment variable on the same service that runs the backend* (the one built from `Dockerfile`). Paste only the URL (`postgresql://…`), no `psql` prefix or quotes.
+- Tables are created automatically on the first successful connection (`lib/ensureSchema.js`) — no manual `npm run migrate` is needed. If Neon is asleep the server retries on start and then every 30s.
+- Open `https://<your-app>/healthz`: `"database": "postgresql"` means connected; otherwise `databaseError` shows why.
+- **Admin Console → Email Settings** (super admin) holds the SMTP details used for donor receipts and "new donation" alerts, with a Test button.

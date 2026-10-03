@@ -11,6 +11,7 @@ const crypto  = require('crypto');
 const router  = express.Router();
 const db      = require('../db');
 const square  = require('../square');
+const mailer  = require('../lib/mailer');
 const { requireAdmin, requireStaff } = require('../lib/auth');
 
 // Looks up the 'square' provider's id, creating it on first use if the
@@ -103,6 +104,7 @@ router.post('/', async (req, res) => {
          frequency || 'once', program_id || null, providerId,
          paymentResult.paymentId || null, status]
       );
+      mailer.sendDonationEmails(result.rows[0]); // fire-and-forget
       return res.status(201).json({ success: true, donation: result.rows[0], square: paymentResult });
     }
     // In-memory
@@ -118,6 +120,7 @@ router.post('/', async (req, res) => {
       created_at: new Date(),
     };
     db.mem.donations.push(donation);
+    mailer.sendDonationEmails(donation);
     return res.status(201).json({ success: true, donation, square: paymentResult });
   } catch (err) {
     res.status(500).json({ error: err.message });

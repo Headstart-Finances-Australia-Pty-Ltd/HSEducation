@@ -27,8 +27,11 @@ const EXCLUDED_TABLES = ['admin_users', 'users', 'app_settings'];
 
 function requireDb(req, res, next) {
   if (!db.isConnected()) {
+    const reason = db.lastError();
     return res.status(503).json({
-      message: 'No database connected. Set DATABASE_URL in backend/js/.env (your Neon connection string) and restart the server — see README.',
+      message: db.hasConfig()
+        ? `No database connected. The server has a DATABASE_URL but could not connect${reason ? ` (${reason})` : ''}. It keeps retrying every 30s — check the connection string and that the Neon project is active.`
+        : 'No database connected. DATABASE_URL is not set on this service — add it as a runtime environment variable (your Neon connection string) and redeploy.',
     });
   }
   next();
