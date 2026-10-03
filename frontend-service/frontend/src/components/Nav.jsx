@@ -4,7 +4,7 @@ import Icon from './Icon';
 
 const Nav = ({ page, setPage }) => {
   const [mobileOpen, setMobileOpen] = useState(false);
-  const links = ['Home', 'About', 'Projects', 'Impact', 'Donate', 'Legal'];
+  const links = ['Home', 'About', 'Projects', 'Impact', 'Legal'];
   return (
     <nav className="nav">
       <div className="nav-inner">
