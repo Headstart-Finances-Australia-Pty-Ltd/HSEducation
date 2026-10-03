@@ -1403,12 +1403,448 @@ const ImagesTab = ({ canEdit }) => {
 };
 
 
+// ─── Groq AI settings ────────────────────────────────────────────────────────
+const GroqSettingsTab = () => {
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+  const [testing, setTesting] = useState(false);
+  const [loadingModels, setLoadingModels] = useState(false);
+  const [error, setError] = useState('');
+  const [notice, setNotice] = useState('');
+  const [testResult, setTestResult] = useState(null);
+  const [models, setModels] = useState([]);
+  const [meta, setMeta] = useState({ apiKeySet: false, apiKeyLast4: null, sources: {} });
+  const [form, setForm] = useState({ model: 'llama-3.3-70b-versatile', apiKey: '' });
+
+  const load = useCallback(async () => {
+    setLoading(true); setError('');
+    try {
+      const s = await adminFetch('/api/groq/settings');
+      setMeta({ apiKeySet: s.apiKeySet, apiKeyLast4: s.apiKeyLast4, sources: s.sources || {} });
+      setForm({ model: s.model, apiKey: '' });
+    } catch (err) { setError(err.message); }
+    finally { setLoading(false); }
+  }, []);
+  useEffect(() => { load(); }, [load]);
+
+  const save = async (extra = {}) => {
+    setSaving(true); setError(''); setNotice(''); setTestResult(null);
+    try {
+      await adminFetch('/api/groq/settings', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ ...form, ...extra }) });
+      setNotice(extra.clearApiKey ? 'API key removed.' : 'Groq settings saved. They take effect immediately.');
+      await load();
+    } catch (err) { setError(err.message); }
+    finally { setSaving(false); }
+  };
+
+  const fetchModels = async () => {
+    setLoadingModels(true); setError('');
+    try { setModels(await adminFetch('/api/groq/models')); }
+    catch (err) { setError(err.message); }
+    finally { setLoadingModels(false); }
+  };
+
+  const runTest = async () => {
+    setTesting(true); setError(''); setNotice(''); setTestResult(null);
+    try { setTestResult({ ok: true, ...(await adminFetch('/api/groq/test', { method: 'POST' })) }); }
+    catch (err) { setTestResult({ ok: false, message: err.message }); }
+    finally { setTesting(false); }
+  };
+
+  const card = { background: 'white', border: '1px solid var(--gray-200)', borderRadius: '16px', padding: '1.5rem', marginBottom: '1.5rem' };
+  const hint = { fontSize: '0.75rem', color: 'var(--gray-500)', marginTop: '0.35rem' };
+  if (loading) return <p style={{ color: 'var(--gray-600)' }}>Loading Groq settings…</p>;
+
+  return (
+    <div>
+      <h3 style={{ fontFamily: 'var(--font-display)', color: 'var(--navy)', marginBottom: '0.4rem' }}>Groq AI Settings</h3>
+      <p style={{ color: 'var(--gray-600)', fontSize: '0.88rem', marginBottom: '1.2rem' }}>
+        Groq's language models draft emails to donors, members and partners in the <strong>Send Email</strong> tab. Create a key in the{' '}
+        <a href="https://console.groq.com/keys" target="_blank" rel="noreferrer" style={{ color: 'var(--teal)' }}>Groq Console</a>.
+      </p>
+      {meta.sources.apiKey === 'env' && <div className="payment-notice">The key currently comes from a server environment variable (GROQ_API_KEY). Saving one here stores it in the database and takes priority.</div>}
+
+      <form onSubmit={(e) => { e.preventDefault(); save(); }} style={card}>
+        <div className="form-row">
+          <div className="form-group">
+            <label className="form-label">API Key (secret)</label>
+            <input className="form-input" type="password" value={form.apiKey} onChange={(e) => setForm({ ...form, apiKey: e.target.value })}
+              placeholder={meta.apiKeySet ? `Saved — ends in ${meta.apiKeyLast4} (leave blank to keep)` : 'gsk_…'} autoComplete="new-password" />
+            <p style={hint}>
+              Stored encrypted and never shown again.
+              {meta.apiKeySet && meta.sources.apiKey === 'console' && (
+                <> <button type="button" onClick={() => window.confirm('Remove the saved Groq API key? AI drafting will stop working until a new key is added.') && save({ clearApiKey: true })}
+                  style={{ ...linkBtn('#dc2626'), fontSize: '0.75rem' }}>Remove saved key</button></>
+              )}
+            </p>
+          </div>
+          <div className="form-group">
+            <label className="form-label">Model</label>
+            <input className="form-input" list="groq-models" value={form.model} onChange={(e) => setForm({ ...form, model: e.target.value })} placeholder="llama-3.3-70b-versatile" autoComplete="off" />
+            <datalist id="groq-models">{models.map((m) => <option key={m} value={m} />)}</datalist>
+            <p style={hint}>
+              Type a model or{' '}
+              <button type="button" onClick={fetchModels} disabled={loadingModels || !meta.apiKeySet} style={{ ...linkBtn('var(--teal)'), fontSize: '0.75rem' }}>
+                {loadingModels ? 'loading…' : 'load the list from Groq'}
+              </button>
+              {models.length > 0 && <> ({models.length} available — click the field to choose)</>}
+            </p>
+          </div>
+        </div>
+        {error && <div className="payment-error">{error}</div>}
+        {notice && <div style={{ background: 'rgba(16,185,129,0.1)', border: '1px solid #10b981', color: '#065f46', borderRadius: '8px', padding: '0.7rem 1rem', marginBottom: '1rem', fontSize: '0.85rem' }}>{notice}</div>}
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.75rem', alignItems: 'center' }}>
+          <button className="donate-btn" type="submit" disabled={saving} style={{ width: 'auto', padding: '0.7rem 1.8rem', opacity: saving ? 0.7 : 1 }}>{saving ? 'Saving…' : 'Save Settings'}</button>
+          <button className="btn-outline" type="button" onClick={runTest} disabled={testing || !meta.apiKeySet}>{testing ? 'Testing…' : 'Test Connection'}</button>
+        </div>
+      </form>
+
+      {testResult && !testResult.ok && <div className="payment-error">Failed: {testResult.message}</div>}
+      {testResult && testResult.ok && (
+        <div style={{ background: 'rgba(16,185,129,0.1)', border: '1px solid #10b981', borderRadius: '12px', padding: '1rem 1.2rem', fontSize: '0.85rem', color: '#065f46' }}>
+          <strong>Groq is working.</strong> Model <code>{testResult.model}</code> replied “{testResult.reply}” in {testResult.ms} ms.
+        </div>
+      )}
+      <p style={{ ...hint, marginTop: '1rem' }}>Email text you write is sent to Groq to generate drafts. Don't include sensitive personal details in the brief.</p>
+    </div>
+  );
+};
+
+// ─── Contacts (members & partners) ───────────────────────────────────────────
+const ContactsTab = () => {
+  const [rows, setRows] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
+  const [notice, setNotice] = useState('');
+  const [filter, setFilter] = useState('all');
+  const [showAdd, setShowAdd] = useState(false);
+  const [showImport, setShowImport] = useState(false);
+  const [form, setForm] = useState({ name: '', email: '', organisation: '', type: 'member' });
+  const [importText, setImportText] = useState('');
+  const [importType, setImportType] = useState('member');
+  const [busy, setBusy] = useState(false);
+
+  const load = useCallback(async () => {
+    setLoading(true); setError('');
+    try { setRows(await adminFetch('/api/contacts')); }
+    catch (err) { setError(err.message); }
+    finally { setLoading(false); }
+  }, []);
+  useEffect(() => { load(); }, [load]);
+
+  const json = (method, body) => ({ method, headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
+
+  const add = async (e) => {
+    e.preventDefault(); setBusy(true); setError(''); setNotice('');
+    try {
+      await adminFetch('/api/contacts', json('POST', form));
+      setForm({ name: '', email: '', organisation: '', type: form.type });
+      setNotice('Contact added.'); await load();
+    } catch (err) { setError(err.message); } finally { setBusy(false); }
+  };
+
+  const doImport = async (e) => {
+    e.preventDefault(); setBusy(true); setError(''); setNotice('');
+    try {
+      // One per line: name, email, organisation (optional)  — comma or tab separated.
+      const parsed = importText.split('\n').map((l) => l.trim()).filter(Boolean).map((l) => {
+        const [name, email, organisation] = l.split(/[,\t]/).map((x) => x.trim());
+        return { name, email, organisation, type: importType };
+      });
+      const r = await adminFetch('/api/contacts/import', json('POST', { rows: parsed }));
+      setNotice(`${r.added} added${r.skipped.length ? `, ${r.skipped.length} skipped: ${r.skipped.slice(0, 3).join(' · ')}${r.skipped.length > 3 ? ' …' : ''}` : '.'}`);
+      if (r.added) setImportText('');
+      await load();
+    } catch (err) { setError(err.message); } finally { setBusy(false); }
+  };
+
+  const toggleSub = async (c) => {
+    try { await adminFetch(`/api/contacts/${c.id}`, json('PATCH', { is_subscribed: !c.is_subscribed })); await load(); }
+    catch (err) { setError(err.message); }
+  };
+  const del = async (c) => {
+    if (!window.confirm(`Remove ${c.name} (${c.email})?`)) return;
+    try { await adminFetch(`/api/contacts/${c.id}`, { method: 'DELETE' }); await load(); }
+    catch (err) { setError(err.message); }
+  };
+
+  const shown = rows.filter((c) => filter === 'all' || c.type === filter);
+  const card = { background: 'white', border: '1px solid var(--gray-200)', borderRadius: '16px', padding: '1.5rem', marginBottom: '1.5rem' };
+  const typeSelect = (value, onChange) => (
+    <select className="form-input" value={value} onChange={onChange}>
+      <option value="member">Member</option><option value="partner">Partner</option><option value="other">Other</option>
+    </select>
+  );
+
+  return (
+    <div>
+      <h3 style={{ fontFamily: 'var(--font-display)', color: 'var(--navy)', marginBottom: '0.4rem' }}>Contacts</h3>
+      <p style={{ color: 'var(--gray-600)', fontSize: '0.88rem', marginBottom: '1.2rem' }}>
+        Members and partners you can email from the <strong>Send Email</strong> tab. Donors are picked up automatically from donations.
+        People who click “Unsubscribe” in an email appear here as unsubscribed and are skipped from then on.
+      </p>
+
+      <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.75rem', marginBottom: '1rem', alignItems: 'center' }}>
+        <button className="btn-outline" onClick={() => { setShowAdd((v) => !v); setShowImport(false); }}>{showAdd ? 'Close' : '+ Add contact'}</button>
+        <button className="btn-outline" onClick={() => { setShowImport((v) => !v); setShowAdd(false); }}>{showImport ? 'Close' : 'Import list'}</button>
+        <select className="form-input" value={filter} onChange={(e) => setFilter(e.target.value)} style={{ width: 'auto' }}>
+          <option value="all">All types</option><option value="member">Members</option><option value="partner">Partners</option><option value="donor">Unsubscribed donors</option><option value="other">Other</option>
+        </select>
+        <span style={{ fontSize: '0.78rem', color: 'var(--gray-600)' }}>{shown.length} contacts</span>
+      </div>
+
+      {showAdd && (
+        <form onSubmit={add} style={card}>
+          <div className="form-row">
+            <div className="form-group"><label className="form-label">Name</label><input className="form-input" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} required /></div>
+            <div className="form-group"><label className="form-label">Email</label><input className="form-input" type="email" value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} required /></div>
+          </div>
+          <div className="form-row">
+            <div className="form-group"><label className="form-label">Organisation (optional)</label><input className="form-input" value={form.organisation} onChange={(e) => setForm({ ...form, organisation: e.target.value })} /></div>
+            <div className="form-group"><label className="form-label">Type</label>{typeSelect(form.type, (e) => setForm({ ...form, type: e.target.value }))}</div>
+          </div>
+          <button className="donate-btn" type="submit" disabled={busy} style={{ width: 'auto', padding: '0.7rem 1.8rem' }}>{busy ? 'Adding…' : 'Add'}</button>
+        </form>
+      )}
+
+      {showImport && (
+        <form onSubmit={doImport} style={card}>
+          <div className="form-group">
+            <label className="form-label">Paste one person per line: name, email, organisation (optional)</label>
+            <textarea className="form-input" rows={6} value={importText} onChange={(e) => setImportText(e.target.value)} placeholder={'Jane Smith, jane@example.com, Smith Foundation\nRaj Patel, raj@example.com'} style={{ fontFamily: 'monospace', fontSize: '0.82rem' }} required />
+          </div>
+          <div style={{ display: 'flex', gap: '0.75rem', alignItems: 'center', flexWrap: 'wrap' }}>
+            <div style={{ minWidth: 160 }}>{typeSelect(importType, (e) => setImportType(e.target.value))}</div>
+            <button className="donate-btn" type="submit" disabled={busy} style={{ width: 'auto', padding: '0.7rem 1.8rem' }}>{busy ? 'Importing…' : 'Import'}</button>
+          </div>
+          <p style={{ fontSize: '0.75rem', color: 'var(--gray-500)', marginTop: '0.6rem' }}>Only import people who have agreed to hear from Headstart Education.</p>
+        </form>
+      )}
+
+      {error && <div className="payment-error">{error}</div>}
+      {notice && <div style={{ background: 'rgba(16,185,129,0.1)', border: '1px solid #10b981', color: '#065f46', borderRadius: '8px', padding: '0.7rem 1rem', marginBottom: '1rem', fontSize: '0.85rem' }}>{notice}</div>}
+      {loading && <p style={{ color: 'var(--gray-600)' }}>Loading contacts…</p>}
+
+      {!loading && (
+        <div style={{ background: 'white', border: '1px solid var(--gray-200)', borderRadius: '16px', overflowX: 'auto' }}>
+          <table className="admin-table" style={{ minWidth: 640 }}>
+            <thead><tr><th>Name</th><th>Email</th><th>Organisation</th><th>Type</th><th>Status</th><th></th></tr></thead>
+            <tbody>
+              {shown.map((c) => (
+                <tr key={c.id}>
+                  <td>{c.name}</td><td>{c.email}</td><td>{c.organisation || '—'}</td>
+                  <td style={{ textTransform: 'capitalize' }}>{c.type}</td>
+                  <td><span className="admin-status" style={c.is_subscribed ? {} : { background: 'rgba(220,38,38,0.1)', color: '#b91c1c' }}>{c.is_subscribed ? 'Subscribed' : 'Unsubscribed'}</span></td>
+                  <td style={{ whiteSpace: 'nowrap' }}>
+                    <button type="button" onClick={() => toggleSub(c)} style={{ ...linkBtn('var(--teal)'), marginRight: '0.6rem' }}>{c.is_subscribed ? 'Unsubscribe' : 'Resubscribe'}</button>
+                    <button type="button" onClick={() => del(c)} style={linkBtn('#dc2626')}>Remove</button>
+                  </td>
+                </tr>
+              ))}
+              {shown.length === 0 && <tr><td colSpan={6} style={{ textAlign: 'center', color: 'var(--gray-500)', padding: '2rem' }}>No contacts yet.</td></tr>}
+            </tbody>
+          </table>
+        </div>
+      )}
+    </div>
+  );
+};
+
+// ─── Send Email (AI-drafted, sent through the system email) ──────────────────
+const SendEmailTab = () => {
+  const [info, setInfo] = useState(null);
+  const [audience, setAudience] = useState('donors');
+  const [brief, setBrief] = useState('');
+  const [details, setDetails] = useState('');
+  const [tone, setTone] = useState('warm and grateful');
+  const [length, setLength] = useState('medium');
+  const [signOff, setSignOff] = useState('The Headstart Education Team');
+  const [subject, setSubject] = useState('');
+  const [body, setBody] = useState('');
+  const [aiDrafted, setAiDrafted] = useState(false);
+  const [drafting, setDrafting] = useState(false);
+  const [testTo, setTestTo] = useState('');
+  const [testing, setTesting] = useState(false);
+  const [sending, setSending] = useState(false);
+  const [confirmOpen, setConfirmOpen] = useState(false);
+  const [history, setHistory] = useState([]);
+  const [error, setError] = useState('');
+  const [notice, setNotice] = useState('');
+
+  const loadInfo = useCallback(async () => {
+    try { setInfo(await adminFetch('/api/mail/audiences')); } catch (err) { setError(err.message); }
+  }, []);
+  const loadHistory = useCallback(async () => {
+    try { setHistory(await adminFetch('/api/mail/history')); } catch { /* ignore */ }
+  }, []);
+  useEffect(() => { loadInfo(); loadHistory(); }, [loadInfo, loadHistory]);
+
+  // Poll while a send is in progress.
+  const anySending = history.some((h) => h.status === 'sending');
+  useEffect(() => {
+    if (!anySending) return undefined;
+    const t = setInterval(loadHistory, 3000);
+    return () => clearInterval(t);
+  }, [anySending, loadHistory]);
+
+  const post = (path, payload) => adminFetch(path, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
+  const count = info?.counts?.[audience] ?? 0;
+
+  const draft = async () => {
+    setDrafting(true); setError(''); setNotice('');
+    try {
+      const d = await post('/api/mail/draft', { audience, brief, details, tone, length, signOff });
+      setSubject(d.subject); setBody(d.body); setAiDrafted(true);
+      setNotice(`Draft written by Groq (${d.model}). Read it carefully and edit anything before sending.`);
+    } catch (err) { setError(err.message); }
+    finally { setDrafting(false); }
+  };
+
+  const sendTest = async () => {
+    setTesting(true); setError(''); setNotice('');
+    try { await post('/api/mail/send', { audience, subject, body, testTo, aiDrafted }); setNotice(`Test email sent to ${testTo}. Check the inbox (and spam).`); }
+    catch (err) { setError(err.message); }
+    finally { setTesting(false); }
+  };
+
+  const sendAll = async () => {
+    setSending(true); setError(''); setNotice('');
+    try {
+      const r = await post('/api/mail/send', { audience, subject, body, aiDrafted, expectedCount: count });
+      setConfirmOpen(false);
+      setNotice(`Sending to ${r.total} ${audience}… progress is shown under “Sent emails” below.`);
+      await loadHistory();
+    } catch (err) { setConfirmOpen(false); setError(err.message); await loadInfo(); }
+    finally { setSending(false); }
+  };
+
+  const card = { background: 'white', border: '1px solid var(--gray-200)', borderRadius: '16px', padding: '1.5rem', marginBottom: '1.5rem' };
+  const hint = { fontSize: '0.75rem', color: 'var(--gray-500)', marginTop: '0.35rem' };
+  const ready = subject.trim() && body.trim().length >= 20;
+
+  return (
+    <div>
+      <h3 style={{ fontFamily: 'var(--font-display)', color: 'var(--navy)', marginBottom: '0.4rem' }}>Send Email</h3>
+      <p style={{ color: 'var(--gray-600)', fontSize: '0.88rem', marginBottom: '1.2rem' }}>
+        Describe what you want to say and Groq writes the email. You review and edit it, send yourself a test, then send it to
+        donors, members or partners through the system email.
+      </p>
+
+      {info && !info.groqConfigured && <div className="payment-notice">AI drafting is off — a super admin needs to add the Groq API key in <strong>Groq AI</strong>. You can still write an email by hand below.</div>}
+      {info && !info.emailConfigured && <div className="payment-notice">System email is not set up — a super admin needs to complete <strong>Email Settings</strong> before anything can be sent.</div>}
+
+      <div style={card}>
+        <div className="form-row">
+          <div className="form-group">
+            <label className="form-label">Who is it for?</label>
+            <select className="form-input" value={audience} onChange={(e) => setAudience(e.target.value)}>
+              <option value="donors">Donors ({info?.counts?.donors ?? '…'})</option>
+              <option value="members">Members ({info?.counts?.members ?? '…'})</option>
+              <option value="partners">Partners ({info?.counts?.partners ?? '…'})</option>
+            </select>
+            <p style={hint}>Subscribed people only. Manage members/partners in the Contacts tab.</p>
+          </div>
+          <div className="form-group">
+            <label className="form-label">Sign-off name</label>
+            <input className="form-input" value={signOff} onChange={(e) => setSignOff(e.target.value)} maxLength={120} />
+          </div>
+        </div>
+        <div className="form-group">
+          <label className="form-label">What should the email say?</label>
+          <textarea className="form-input" rows={3} value={brief} onChange={(e) => setBrief(e.target.value)} style={{ resize: 'vertical' }}
+            placeholder="e.g. Thank donors for their support this quarter and let them know our first school project in Uttar Pradesh is progressing." />
+        </div>
+        <div className="form-group">
+          <label className="form-label">Facts to include (optional)</label>
+          <textarea className="form-input" rows={2} value={details} onChange={(e) => setDetails(e.target.value)} style={{ resize: 'vertical' }}
+            placeholder="Real numbers, dates, links or news. The AI is told not to invent any." />
+        </div>
+        <div className="form-row">
+          <div className="form-group"><label className="form-label">Tone</label>
+            <select className="form-input" value={tone} onChange={(e) => setTone(e.target.value)}>{(info?.tones || [tone]).map((t) => <option key={t} value={t}>{t}</option>)}</select></div>
+          <div className="form-group"><label className="form-label">Length</label>
+            <select className="form-input" value={length} onChange={(e) => setLength(e.target.value)}><option value="short">Short</option><option value="medium">Medium</option><option value="long">Long</option></select></div>
+        </div>
+        <button className="donate-btn" type="button" onClick={draft} disabled={drafting || !info?.groqConfigured || brief.trim().length < 10}
+          style={{ width: 'auto', padding: '0.7rem 1.8rem', opacity: drafting ? 0.7 : 1 }}>
+          {drafting ? '✨ Writing…' : (body ? '✨ Rewrite with Groq' : '✨ Write with Groq')}
+        </button>
+      </div>
+
+      {error && <div className="payment-error">{error}</div>}
+      {notice && <div style={{ background: 'rgba(16,185,129,0.1)', border: '1px solid #10b981', color: '#065f46', borderRadius: '8px', padding: '0.7rem 1rem', marginBottom: '1rem', fontSize: '0.85rem' }}>{notice}</div>}
+
+      <div style={card}>
+        <h4 style={{ fontFamily: 'var(--font-display)', color: 'var(--navy)', marginBottom: '0.8rem' }}>Your email</h4>
+        <div className="form-group">
+          <label className="form-label">Subject</label>
+          <input className="form-input" value={subject} onChange={(e) => setSubject(e.target.value)} maxLength={200} />
+        </div>
+        <div className="form-group">
+          <label className="form-label">Message</label>
+          <textarea className="form-input" rows={12} value={body} onChange={(e) => setBody(e.target.value)} style={{ resize: 'vertical', lineHeight: 1.6 }} />
+          <p style={hint}><code>{'{{first_name}}'}</code>, <code>{'{{name}}'}</code> and <code>{'{{organisation}}'}</code> are filled in for each person. An unsubscribe link is added automatically.</p>
+        </div>
+
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.75rem', alignItems: 'center', paddingTop: '0.5rem', borderTop: '1px solid var(--gray-200)' }}>
+          <input className="form-input" type="email" value={testTo} onChange={(e) => setTestTo(e.target.value)} placeholder="your email, for a test" style={{ maxWidth: 260 }} />
+          <button className="btn-outline" type="button" onClick={sendTest} disabled={testing || !ready || !testTo || !info?.emailConfigured}>{testing ? 'Sending…' : 'Send test'}</button>
+          <span style={{ flex: 1 }} />
+          <button className="donate-btn" type="button" onClick={() => setConfirmOpen(true)} disabled={!ready || count === 0 || !info?.emailConfigured}
+            style={{ width: 'auto', padding: '0.7rem 1.8rem' }}>
+            Send to {count} {audience}
+          </button>
+        </div>
+      </div>
+
+      <h4 style={{ fontFamily: 'var(--font-display)', color: 'var(--navy)', marginBottom: '0.8rem' }}>Sent emails</h4>
+      <div style={{ background: 'white', border: '1px solid var(--gray-200)', borderRadius: '16px', overflowX: 'auto' }}>
+        <table className="admin-table" style={{ minWidth: 640 }}>
+          <thead><tr><th>Date</th><th>Subject</th><th>To</th><th>Result</th><th>By</th></tr></thead>
+          <tbody>
+            {history.map((h) => (
+              <tr key={h.id}>
+                <td style={{ whiteSpace: 'nowrap' }}>{new Date(h.created_at).toLocaleString()}</td>
+                <td>{h.subject}{h.ai_drafted && <span title="Drafted with AI" style={{ marginLeft: 6 }}>✨</span>}</td>
+                <td style={{ textTransform: 'capitalize' }}>{h.audience}</td>
+                <td>
+                  <span className="admin-status">{h.status === 'sending' ? `Sending… ${h.sent_count + h.failed_count}/${h.total}` : h.status}</span>
+                  <div style={{ fontSize: '0.75rem', color: 'var(--gray-600)' }}>{h.sent_count} sent{h.failed_count ? `, ${h.failed_count} failed` : ''}</div>
+                  {h.failed_count > 0 && h.last_error && <div style={{ fontSize: '0.72rem', color: '#b91c1c', maxWidth: 260 }}>{h.last_error}</div>}
+                </td>
+                <td>{h.sent_by}</td>
+              </tr>
+            ))}
+            {history.length === 0 && <tr><td colSpan={5} style={{ textAlign: 'center', color: 'var(--gray-500)', padding: '2rem' }}>Nothing sent yet.</td></tr>}
+          </tbody>
+        </table>
+      </div>
+
+      <Modal open={confirmOpen} onClose={() => !sending && setConfirmOpen(false)} title="Send this email?" width={480}>
+        <p style={{ color: 'var(--gray-700)', marginBottom: '0.6rem' }}>
+          This will email <strong>{count} {audience}</strong> from your system email address. Emails can't be recalled once sent.
+        </p>
+        <div style={{ background: 'var(--gray-100)', borderRadius: 8, padding: '0.7rem 0.9rem', fontSize: '0.85rem', marginBottom: '1rem' }}>
+          <strong>{subject}</strong>
+          {aiDrafted && <div style={{ ...hint, marginTop: '0.3rem' }}>✨ Drafted with AI — make sure you've read it and every fact is correct.</div>}
+        </div>
+        <div style={{ display: 'flex', gap: '0.75rem' }}>
+          <button className="donate-btn" onClick={sendAll} disabled={sending} style={{ opacity: sending ? 0.7 : 1 }}>{sending ? 'Starting…' : `Yes, send to ${count}`}</button>
+          <button className="btn-outline" onClick={() => setConfirmOpen(false)} disabled={sending}>Cancel</button>
+        </div>
+      </Modal>
+    </div>
+  );
+};
+
+
 // ─── Main Admin page ─────────────────────────────────────────────────────────
 const AdminPage = () => {
   const [checkingSession, setCheckingSession] = useState(true);
   const [admin, setAdmin] = useState(null);
   const [tab, setTab] = useState('donations');
   const isSuperAdmin = admin?.role === 'superadmin';
+  const canSendMail = ['superadmin', 'admin'].includes(admin?.role);
   const canEditProjects = ['superadmin', 'admin', 'editor'].includes(admin?.role);
   const [showPassword, setShowPassword] = useState(false);
 
@@ -1456,9 +1892,12 @@ const AdminPage = () => {
               <div className={`tab${tab === 'donations' ? ' active' : ''}`} onClick={() => setTab('donations')}>Donations</div>
               <div className={`tab${tab === 'projects' ? ' active' : ''}`} onClick={() => setTab('projects')}>Projects</div>
               <div className={`tab${tab === 'images' ? ' active' : ''}`} onClick={() => setTab('images')}>Images</div>
+              {canSendMail && <div className={`tab${tab === 'mail' ? ' active' : ''}`} onClick={() => setTab('mail')}>Send Email</div>}
+              {canSendMail && <div className={`tab${tab === 'contacts' ? ' active' : ''}`} onClick={() => setTab('contacts')}>Contacts</div>}
               {isSuperAdmin && <div className={`tab${tab === 'users' ? ' active' : ''}`} onClick={() => setTab('users')}>Users</div>}
               {isSuperAdmin && <div className={`tab${tab === 'square' ? ' active' : ''}`} onClick={() => setTab('square')}>Square Settings</div>}
               {isSuperAdmin && <div className={`tab${tab === 'email' ? ' active' : ''}`} onClick={() => setTab('email')}>Email Settings</div>}
+              {isSuperAdmin && <div className={`tab${tab === 'groq' ? ' active' : ''}`} onClick={() => setTab('groq')}>Groq AI</div>}
               {isSuperAdmin && <div className={`tab${tab === 'database' ? ' active' : ''}`} onClick={() => setTab('database')}>Database Tables</div>}
             </div>
 
@@ -1468,6 +1907,9 @@ const AdminPage = () => {
             {tab === 'users' && isSuperAdmin && <UsersTab currentUsername={admin.username} />}
             {tab === 'square' && isSuperAdmin && <SquareSettingsTab />}
             {tab === 'email' && isSuperAdmin && <EmailSettingsTab />}
+            {tab === 'groq' && isSuperAdmin && <GroqSettingsTab />}
+            {tab === 'mail' && canSendMail && <SendEmailTab />}
+            {tab === 'contacts' && canSendMail && <ContactsTab />}
             {tab === 'database' && isSuperAdmin && <DatabaseTablesTab />}
           </div>
         </section>
