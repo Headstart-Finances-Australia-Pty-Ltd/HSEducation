@@ -1,50 +1,40 @@
 // ============================================================
 // Headstart Education — Default Admin Bootstrap
 // ============================================================
-// On startup, creates a default admin login if no admin_users exist yet.
-// Username/password come from ADMIN_USERNAME / ADMIN_PASSWORD in .env,
-// falling back to admin / HSE$1 if not set — change these in production!
-// Safe to run every startup: it's a no-op once an admin already exists.
+// On startup, creates the first super admin login ONLY if the users table
+// is completely empty (a brand-new install). Username/password come from
+// ADMIN_USERNAME / ADMIN_PASSWORD in .env, falling back to admin / HSE$1 —
+// change these in production!
+//
+// Once any user exists this does nothing, so removing or renaming the
+// default account from the Users tab sticks across restarts.
 // ============================================================
 const db = require('./db');
+const users = require('./lib/users');
 const { hashPassword } = require('./lib/auth');
 
 async function bootstrapAdmin() {
   await db.ready();
 
-  const username = (process.env.ADMIN_USERNAME || 'admin').toLowerCase();
-  const password = process.env.ADMIN_PASSWORD || 'HSE$1';
-
-  if (db.isConnected()) {
-    const existing = await db.query('SELECT id FROM admin_users WHERE username = $1', [username]);
-    if (existing.rows.length === 0) {
-      const hash = await hashPassword(password);
-      await db.query(
-        `INSERT INTO admin_users (username, password_hash, name, role) VALUES ($1,$2,$3,'superadmin')`,
-        [username, hash, 'Admin']
-      );
-      console.log(`👑 Created default admin login: "${username}" (see ADMIN_USERNAME/ADMIN_PASSWORD in .env)`);
-      console.log('   ⚠️  Log in and change this password before going live.');
-    } else {
-      console.log(`👑 Admin login already exists ("${username}") — leaving it as is.`);
-    }
+  if ((await users.count()) > 0) {
+    console.log('👑 Users already exist — leaving them as they are.');
     return;
   }
 
-  // In-memory fallback
-  if (!db.mem.adminUsers.find((a) => a.username === username)) {
-    const hash = await hashPassword(password);
-    db.mem.adminUsers.push({
-      id: db.newId(),
-      username,
-      password_hash: hash,
-      name: 'Admin',
-      role: 'superadmin',
-      created_at: new Date(),
-    });
-    console.log(`👑 Created default admin login: "${username}" (in-memory — resets on restart)`);
-    console.log('   ⚠️  Set ADMIN_USERNAME/ADMIN_PASSWORD in .env to change these.');
-  }
+  const username = (process.env.ADMIN_USERNAME || 'admin').toLowerCase();
+  const password = process.env.ADMIN_PASSWORD || 'HSE$1';
+
+  await users.create({
+    username,
+    passwordHash: await hashPassword(password),
+    name: 'Admin',
+    role: 'superadmin',
+    isActive: true,
+  });
+
+  const where = db.isConnected() ? '' : ' (in-memory — resets on restart)';
+  console.log(`👑 Created default super admin: "${username}"${where}`);
+  console.log('   ⚠️  Log in and change this password before going live.');
 }
 
 module.exports = bootstrapAdmin;

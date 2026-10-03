@@ -18,11 +18,12 @@ const { logAudit } = require('./adminAuth');
 
 router.use(requireSuperAdmin);
 
-// admin_users is deliberately excluded from this generic editor: it has
-// its own dedicated UI (the Admin Users tab), and a generic editor would
+// users / admin_users / app_settings are deliberately excluded from this
+// generic editor: they have dedicated UIs (the Users and Square Settings
+// tabs), and a generic editor would
 // let someone paste a plaintext password straight into password_hash,
-// silently creating a broken/insecure login. Same reasoning Kutumb uses.
-const EXCLUDED_TABLES = ['admin_users'];
+// silently creating a broken/insecure login (or expose stored secrets).
+const EXCLUDED_TABLES = ['admin_users', 'users', 'app_settings'];
 
 function requireDb(req, res, next) {
   if (!db.isConnected()) {

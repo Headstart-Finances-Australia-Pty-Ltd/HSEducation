@@ -10,7 +10,7 @@
 const express = require('express');
 const router  = express.Router();
 const db      = require('../db');
-const { requireAdmin } = require('../lib/auth');
+const { requireEditor } = require('../lib/auth');
 
 // GET /api/programs
 router.get('/', async (req, res) => {
@@ -51,7 +51,7 @@ router.get('/:id', async (req, res) => {
 });
 
 // POST /api/programs
-router.post('/', requireAdmin, async (req, res) => {
+router.post('/', requireEditor, async (req, res) => {
   const { name, category, description, location, goal_amount, status, image_url } = req.body;
   if (!name || !category) return res.status(400).json({ error: 'name and category are required' });
   try {
@@ -74,7 +74,7 @@ router.post('/', requireAdmin, async (req, res) => {
 });
 
 // PUT /api/programs/:id
-router.put('/:id', requireAdmin, async (req, res) => {
+router.put('/:id', requireEditor, async (req, res) => {
   const { name, category, description, location, goal_amount, raised_amount, status, image_url } = req.body;
   try {
     if (db.isConnected()) {
@@ -99,7 +99,7 @@ router.put('/:id', requireAdmin, async (req, res) => {
 });
 
 // DELETE /api/programs/:id
-router.delete('/:id', requireAdmin, async (req, res) => {
+router.delete('/:id', requireEditor, async (req, res) => {
   try {
     if (db.isConnected()) {
       await db.query('DELETE FROM programs WHERE id=$1', [req.params.id]);

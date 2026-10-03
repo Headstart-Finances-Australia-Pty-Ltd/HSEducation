@@ -12,7 +12,8 @@ CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
 
 -- ─────────────────────────────────────────────────────────
 -- TABLE: admin_users
--- Admin console logins (bcrypt-hashed passwords; see backend/js/lib/auth.js)
+-- LEGACY — superseded by the `users` table below. Kept (never dropped) so
+-- existing data is safe; its rows are copied into `users` automatically.
 -- The first row is created automatically on startup — see bootstrapAdmin.js
 -- and ADMIN_USERNAME / ADMIN_PASSWORD in backend/js/.env
 -- ─────────────────────────────────────────────────────────
@@ -23,6 +24,55 @@ CREATE TABLE IF NOT EXISTS admin_users (
   name           VARCHAR(100) NOT NULL,
   role           VARCHAR(20)  NOT NULL DEFAULT 'admin' CHECK (role IN ('admin','superadmin')),
   created_at     TIMESTAMPTZ  NOT NULL DEFAULT NOW()
+);
+
+
+-- ─────────────────────────────────────────────────────────
+-- TABLE: users
+-- Everyone who can log in to the Admin Console — super admins, admins
+-- and other staff. Replaces the old admin_users table (rows are copied
+-- across below, keeping the same ids, so existing logins keep working).
+-- Roles:
+--   superadmin — everything, incl. Users, Square Settings, Database Tables
+--   admin      — donations (view + update status) and projects
+--   editor     — view donations, create/edit/delete projects
+--   viewer     — read-only access to donations and projects
+-- Passwords are bcrypt-hashed (see backend/js/lib/auth.js).
+-- ─────────────────────────────────────────────────────────
+CREATE TABLE IF NOT EXISTS users (
+  id             UUID         PRIMARY KEY DEFAULT uuid_generate_v4(),
+  username       VARCHAR(100) UNIQUE NOT NULL,
+  email          VARCHAR(255),
+  password_hash  TEXT         NOT NULL,
+  name           VARCHAR(100) NOT NULL,
+  role           VARCHAR(20)  NOT NULL DEFAULT 'viewer'
+                   CHECK (role IN ('superadmin','admin','editor','viewer')),
+  is_active      BOOLEAN      NOT NULL DEFAULT true,
+  last_login_at  TIMESTAMPTZ,
+  created_at     TIMESTAMPTZ  NOT NULL DEFAULT NOW(),
+  updated_at     TIMESTAMPTZ  NOT NULL DEFAULT NOW()
+);
+CREATE INDEX IF NOT EXISTS idx_users_role ON users(role);
+
+-- One-off, idempotent copy of legacy admin accounts (same ids, so any
+-- existing session keeps working). Does nothing once they're copied.
+INSERT INTO users (id, username, password_hash, name, role, created_at)
+SELECT id, username, password_hash, name, role, created_at FROM admin_users
+ON CONFLICT (username) DO NOTHING;
+
+-- ─────────────────────────────────────────────────────────
+-- TABLE: app_settings
+-- Key/value settings managed from the Admin Console (currently the
+-- Square credentials, keys prefixed "square."). Secret values are
+-- AES-256-GCM encrypted by the app before they are stored — see
+-- backend/js/lib/settings.js.
+-- ─────────────────────────────────────────────────────────
+CREATE TABLE IF NOT EXISTS app_settings (
+  key         VARCHAR(100) PRIMARY KEY,
+  value       TEXT,
+  is_secret   BOOLEAN      NOT NULL DEFAULT false,
+  updated_by  VARCHAR(100),
+  updated_at  TIMESTAMPTZ  NOT NULL DEFAULT NOW()
 );
 
 -- ─────────────────────────────────────────────────────────
@@ -126,3 +176,4 @@ $$ LANGUAGE plpgsql;
 CREATE OR REPLACE TRIGGER trg_donations_updated  BEFORE UPDATE ON donations  FOR EACH ROW EXECUTE FUNCTION update_updated_at();
 CREATE OR REPLACE TRIGGER trg_programs_updated   BEFORE UPDATE ON programs   FOR EACH ROW EXECUTE FUNCTION update_updated_at();
 CREATE OR REPLACE TRIGGER trg_providers_updated  BEFORE UPDATE ON providers  FOR EACH ROW EXECUTE FUNCTION update_updated_at();
+CREATE OR REPLACE TRIGGER trg_users_updated      BEFORE UPDATE ON users      FOR EACH ROW EXECUTE FUNCTION update_updated_at();

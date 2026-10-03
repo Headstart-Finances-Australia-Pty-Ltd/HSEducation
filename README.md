@@ -20,15 +20,15 @@ HSEducation/
 ├── app.cmd                    ← One-click Windows launcher (see below)
 │
 ├── frontend/
-│   ├── .env.example           ← Copy to .env — Square public IDs
+│   ├── .env.example           ← Optional fallback for Square IDs (normally set in the Admin Console)
 │   ├── package.json
 │   ├── package-lock.json
 │   ├── public/
-│   │   └── index.html          ← Includes the Square Web Payments SDK <script>
+│   │   └── index.html
 │   └── src/
 │       ├── App.jsx
 │       ├── index.js
-│       ├── square.js           ← Square Web Payments SDK config/helper
+│       ├── square.js           ← Loads Square config from the API at runtime + the Square SDK
 │       ├── images/index.js         ← Image URLs (Unsplash CDN)
 │       ├── components/
 │       │   ├── GlobalStyles.jsx
@@ -52,19 +52,22 @@ HSEducation/
     │   ├── .env.example          ← Copy to .env — DB, Square, admin secrets
     │   ├── server.js             ← Express API
     │   ├── db.js                 ← PostgreSQL + in-memory fallback
-    │   ├── square.js             ← Square Payments API client
-    │   ├── bootstrapAdmin.js     ← Creates the default admin login on startup
+    │   ├── square.js             ← Square Payments client (reads credentials saved in the console)
+    │   ├── bootstrapAdmin.js     ← Creates the first super admin on a brand-new install
     │   ├── package.json
     │   ├── lib/
-    │   │   └── auth.js           ← bcrypt + JWT + httpOnly cookie session auth
+    │   │   ├── auth.js           ← bcrypt + JWT + httpOnly cookie sessions, role checks
+    │   │   ├── users.js          ← Users table data access
+    │   │   └── settings.js       ← Encrypted key/value settings store (Square credentials)
     │   └── routes/
-    │       ├── adminAuth.js      ← login / logout / session check
-    │       ├── adminUsers.js     ← manage admin accounts (super admin only)
+    │       ├── adminAuth.js      ← login / logout / session check / change own password
+    │       ├── users.js          ← manage users and roles (super admin only)
+    │       ├── squareSettings.js ← Square credentials: save / test / public config
     │       ├── donations.js      ← Charges via Square; reads are admin-only
     │       ├── programs.js       ← Reads public; writes are admin-only
     │       └── providers.js
     └── app_db/
-        ├── 01_schema.sql         ← Database tables (now incl. admin_users)
+        ├── 01_schema.sql         ← Database tables (incl. users and app_settings)
         ├── 02_seed.sql           ← Seed data
         └── 03_queries.sql        ← Admin queries
 ```
@@ -165,10 +168,8 @@ This app uses [Neon](https://neon.tech) for PostgreSQL rather than a Northflank 
    DATABASE_URL=<your Neon connection string, database "hseducation">
    FRONTEND_URL=https://hseducation.com.au
 
-   # Square payments — see "Square Payments Setup" below
-   SQUARE_ACCESS_TOKEN=<your production access token>
-   SQUARE_LOCATION_ID=<your production location id>
-   SQUARE_ENVIRONMENT=production
+   # Square payments — no variables needed: enter the credentials in
+   # Admin Console → Square Settings after you log in (see "Square Payments Setup").
 
    # Admin console — see "Admin Console" below
    ADMIN_USERNAME=<choose a username>
@@ -243,8 +244,8 @@ This creates all the tables and seeds the starting project/provider data and you
 
 ```bash
 # 0. Configure environment variables (one-time)
-cp backend/js/.env.example backend/js/.env     # then fill in DATABASE_URL + Square keys
-cp frontend/.env.example frontend/.env         # then fill in your Square public IDs
+cp backend/js/.env.example backend/js/.env     # then fill in DATABASE_URL + admin/JWT secrets
+# Square credentials are entered later in the Admin Console (Square Settings tab)
 
 # Terminal 1 — Backend
 cd backend/js
@@ -287,7 +288,7 @@ From `backend/js`, run:
 ```bash
 npm run migrate
 ```
-This creates all the tables (`donations`, `programs`, `providers`, `admin_users`, `admin_audit_log`) and seeds the starting project/provider data and your default admin login. **It's safe to run again at any time** — every statement is written to skip anything that already exists, and it never deletes data. `app.cmd` also runs this automatically on every launch if `DATABASE_URL` is set, so a Neon database stays in sync without any manual steps after the first setup.
+This creates all the tables (`donations`, `programs`, `providers`, `users`, `app_settings`, `admin_audit_log`) and seeds the starting project/provider data and your default admin login. **It's safe to run again at any time** — every statement is written to skip anything that already exists, and it never deletes data. `app.cmd` also runs this automatically on every launch if `DATABASE_URL` is set, so a Neon database stays in sync without any manual steps after the first setup.
 
 ### 4. Verify
 Start the server (`node server.js` or restart `app.cmd`) — the startup log should say:
@@ -309,27 +310,27 @@ The Donate page collects card or bank account details through a **secure popup**
    - **Sandbox Access Token**
    - **Sandbox Location ID** (Locations → your test location)
 
-### 2. Configure the frontend
-Copy `frontend/.env.example` to `frontend/.env` and fill in:
-```
-REACT_APP_SQUARE_APPLICATION_ID=sandbox-sq0idb-...
-REACT_APP_SQUARE_LOCATION_ID=...
-```
-Restart `npm start` (or rebuild) after editing — React only reads `.env` at startup/build time.
+### 2. Enter the credentials in the Admin Console
+No `.env` editing or rebuild needed. Log in to the **Admin Console** as a Super Admin, open the **Square Settings** tab and fill in:
 
-### 3. Configure the backend
-Copy `backend/js/.env.example` to `backend/js/.env` and fill in:
-```
-SQUARE_ACCESS_TOKEN=EAAA...
-SQUARE_LOCATION_ID=...
-SQUARE_ENVIRONMENT=sandbox
-```
+| Field | Where it comes from |
+|---|---|
+| **Environment** | `Sandbox` while testing, `Production` for live payments |
+| **Application ID** | Square Developer Dashboard → your app (public — used by the card form) |
+| **Location ID** | Square Dashboard → Locations (or click **Test Connection** to list yours and pick one) |
+| **Access Token** | Square Developer Dashboard → your app → Credentials (secret) |
 
-### 4. Test it
-Restart both servers, go to **Donate**, enter an amount and your details, click **Continue to Payment**, and use one of [Square's sandbox test card numbers](https://developer.squareup.com/docs/testing/test-values) (e.g. `4111 1111 1111 1111`, any future expiry, any CVV) in the popup.
+Click **Save Settings**. They take effect immediately — no restart. The access token is **encrypted in the database** (AES-256-GCM) and is never sent back to the browser; after saving you'll only see the last 4 characters. Leave the token field blank when saving to keep the existing one. **Test Connection** calls Square with the saved credentials and tells you if the token, environment and location line up.
 
-### 5. Go live
-When ready for real payments: switch to your **Production** Application ID / Access Token / Location ID, set `SQUARE_ENVIRONMENT=production`, and change the SDK script in `frontend/public/index.html` from `sandbox.web.squarecdn.com` to `web.squarecdn.com` (there's a comment marking exactly where).
+Only Super Admins can see or change this tab.
+
+> **Optional fallback:** if nothing has been saved in the console, the server still reads `SQUARE_ACCESS_TOKEN`, `SQUARE_LOCATION_ID`, `SQUARE_APPLICATION_ID` and `SQUARE_ENVIRONMENT` from `backend/js/.env` (and the old `REACT_APP_SQUARE_*` build variables), so existing deployments keep working. Values saved in the console always take priority.
+
+### 3. Test it
+Go to **Donate**, enter an amount and your details, click **Continue to Payment**, and use one of [Square's sandbox test card numbers](https://developer.squareup.com/docs/testing/test-values) (e.g. `4111 1111 1111 1111`, any future expiry, any CVV) in the popup.
+
+### 4. Go live
+Switch **Environment** to `Production`, enter your **Production** Application ID / Access Token / Location ID, and save. The Donate page automatically loads Square's production script — there is nothing to edit in `index.html` any more.
 
 ### Notes & limitations
 - **Bank account (ACH) payments** are shown as a second tab in the popup automatically if your Square account supports them — this varies by region/account, so it may not appear for all merchants.
@@ -344,11 +345,13 @@ When ready for real payments: switch to your **Production** Application ID / Acc
 |----------------|------------------------------|-----------------------|
 | `PORT`         | `5000`                       | API listen port       |
 | `DATABASE_URL` | `postgresql://...@...neon.tech/hseducation?sslmode=require` | Neon (or any Postgres) connection string — see "Neon Database Setup" |
-| `SQUARE_ACCESS_TOKEN` | `EAAA...`              | Square secret access token |
-| `SQUARE_LOCATION_ID`  | `L1ABC...`             | Square Location to charge against |
-| `SQUARE_ENVIRONMENT`  | `sandbox` / `production` | Which Square environment to use |
-| `ADMIN_USERNAME` | `admin`                    | Default admin console login (created on first startup) |
-| `ADMIN_PASSWORD` | `HSE$1`                    | Default admin console password (change before deploying) |
+| `SQUARE_ACCESS_TOKEN` | `EAAA...`              | *Optional fallback* — normally set in Admin Console → Square Settings |
+| `SQUARE_LOCATION_ID`  | `L1ABC...`             | *Optional fallback* — as above |
+| `SQUARE_APPLICATION_ID` | `sandbox-sq0idb-...` | *Optional fallback* — as above |
+| `SQUARE_ENVIRONMENT`  | `sandbox` / `production` | *Optional fallback* — as above |
+| `SETTINGS_ENCRYPTION_KEY` | long random string | Encrypts secrets saved in the console (falls back to `JWT_SECRET`). Changing it means re-entering saved secrets |
+| `ADMIN_USERNAME` | `admin`                    | First super admin login — only created when the users table is empty |
+| `ADMIN_PASSWORD` | `HSE$1`                    | First super admin password (change before deploying) |
 | `JWT_SECRET`     | long random string          | Signs admin session tokens — set a real secret in production |
 | `FRONTEND_URL` | `https://hseducation.com.au` | CORS allowed origin   |
 
@@ -369,21 +372,36 @@ The **"Admin"** link in the footer (just below **Legal**) opens a full admin con
 | Username | `admin` |
 | Password | `HSE$1` |
 
-This default account is created automatically the first time the server starts (see `backend/js/bootstrapAdmin.js`) — **change the password** by setting `ADMIN_USERNAME` / `ADMIN_PASSWORD` in `backend/js/.env` before deploying, or by logging in and creating a new account from the **Admin Users** tab and removing the default one.
+This first account is created automatically the first time the server starts **on a brand-new install** (see `backend/js/bootstrapAdmin.js`) and is a Super Admin — **change the password** by setting `ADMIN_USERNAME` / `ADMIN_PASSWORD` in `backend/js/.env` before deploying, or log in and use **Change Password** (top right of the console). It's only created when there are no users at all, so if you later add your own users and remove this one, it stays removed.
 
 **Tabs:**
-- **Donations** — every donation with its status, pulled live from `/api/donations` (now admin-only — this endpoint 401s without a valid session, since it contains donor names/emails/phone numbers).
-- **Projects** — view and add projects/programs; backed by `/api/programs` (reading programs is public, same as before, but creating/editing/deleting now requires admin login).
-- **Admin Users** *(Super Admin only)* — create additional admin logins (`admin` or `superadmin` role) and remove old ones. The first account created by `bootstrapAdmin.js` is a `superadmin`.
-- **Database Tables** *(Super Admin only)* — a generic browser/editor over every table in your Neon database (`donations`, `programs`, `providers`, `admin_audit_log`). Pick a table from the dropdown, then:
+- **Donations** — every donation with its status, pulled live from `/api/donations` (admin-only — this endpoint 401s without a valid session, since it contains donor names/emails/phone numbers).
+- **Projects** — view and add projects/programs; backed by `/api/programs` (reading programs is public, but creating/editing/deleting requires an Editor, Admin or Super Admin login). Viewers see the list without the add/remove controls.
+- **Users** *(Super Admin only)* — a table of everyone who can log in. Add users, edit their name/email/role, reset a password, disable/enable an account, or remove it. A "What each role can do" panel sits under the table.
+- **Square Settings** *(Super Admin only)* — Square environment, Application ID, Location ID and access token, with a **Test Connection** button. See "Square Payments Setup" above.
+- **Database Tables** *(Super Admin only)* — a generic browser/editor over the tables in your Neon database (`donations`, `programs`, `providers`, `admin_audit_log`). Pick a table from the dropdown, then:
   - **Search** — one box searches across every column at once.
   - **Filter** — click the ▼ next to any column header for a checklist of that column's distinct values; check the ones you want to see.
   - **Sort** — click a column header to sort by it, click again to reverse.
   - **Add / Edit / Delete** — add a new row, edit any cell inline, or delete a row entirely.
 
-  `admin_users` is deliberately left out of this generic editor (passwords need to go through the proper hashing flow — use the Admin Users tab for that instead), and everything here requires an active database connection (see "Neon Database Setup" above) — it has nothing to show when running on the in-memory fallback.
+  `users`, `admin_users` and `app_settings` are deliberately left out of this generic editor (passwords must go through proper hashing, and settings hold encrypted secrets) — use the Users and Square Settings tabs for those. Everything here requires an active database connection (see "Neon Database Setup" above) — it has nothing to show when running on the in-memory fallback.
 
-**How the access control actually works:** hiding a tab in the React UI is just a convenience — the real boundary is server-side. `requireAdmin` (checked on every sensitive route) and `requireSuperAdmin` (checked on the Admin Users routes) independently verify the session cookie/JWT on the backend regardless of what the frontend shows, the same pattern Kutumb uses with its `requireAdmin`/`requireSuperAdmin` middleware.
+### Roles
+
+| Role | Donations | Projects | Users | Square Settings | Database Tables |
+|---|---|---|---|---|---|
+| **Super Admin** | view + update status | add / edit / remove | ✅ | ✅ | ✅ |
+| **Admin** | view + update status | add / edit / remove | — | — | — |
+| **Editor** | view | add / edit / remove | — | — | — |
+| **Viewer** | view | view | — | — | — |
+
+Safeguards: you can't delete, disable or demote your own account, and the system won't let the last active Super Admin be removed, disabled or demoted. Role changes and disabling an account take effect **immediately** — even for someone already logged in — because every request re-checks the user in the database. Passwords are bcrypt-hashed, must be at least 8 characters, and user/Square changes are recorded in `admin_audit_log`.
+
+### Upgrading an existing database
+Run `npm run migrate` (`app.cmd` does this for you). It creates the new `users` and `app_settings` tables and **copies your existing `admin_users` accounts into `users`** (same ids, same passwords), so current logins keep working. The old `admin_users` table is left in place untouched.
+
+**How the access control actually works:** hiding a tab in the React UI is just a convenience — the real boundary is server-side. `requireStaff` / `requireEditor` / `requireAdmin` / `requireSuperAdmin` (checked per route) independently verify the session cookie/JWT on the backend regardless of what the frontend shows, the same pattern Kutumb uses with its `requireAdmin`/`requireSuperAdmin` middleware.
 
 A session lasts **12 hours**, matching the JWT's expiry, then you'll need to log in again.
 

@@ -17,7 +17,8 @@ const memStore = {
     { id:'v1', name:'Square',            type:'square',  is_active:true,  created_at: new Date() },
     { id:'v2', name:'Manual / Bank Transfer', type:'manual', is_active:true, created_at: new Date() },
   ],
-  adminUsers: [],   // populated by bootstrapAdmin.js on startup
+  users: [],        // populated by bootstrapAdmin.js on startup
+  settings: {},     // key -> { value, is_secret }  (Admin Console settings)
   auditLog: [],
   nextId: 1000,
 };
