@@ -8,7 +8,7 @@ const LegalPage = () => {
     {q:'Is my donation tax-deductible?',a:'Yes. HS Education holds Deductible Gift Recipient (DGR) status endorsed by the Australian Taxation Office. All donations of $2 or more are fully tax-deductible. You will receive an electronic receipt immediately upon donation.'},
     {q:'How do I obtain a receipt for my donation?',a:'Tax receipts are issued automatically via email immediately after your donation is processed. If you haven\'t received one within 24 hours, contact giving@hseducation.com.au with your name, amount, and date.'},
     {q:'What happens to my personal information?',a:'HS Education collects and stores personal information in accordance with the Australian Privacy Act 1988 and the Australian Privacy Principles. We never sell, rent, or trade your personal information to third parties.'},
-    {q:'How can I cancel a recurring donation?',a:'You may cancel your recurring donation at any time by contacting giving@hseducation.com.au or calling (02) 8880 1234. Cancellation requests are processed within 2 business days.'},
+    {q:'How can I cancel a recurring donation?',a:'You may cancel your recurring donation at any time by contacting giving@hseducation.com.au. Cancellation requests are processed within 2 business days.'},
     {q:'How do I make a complaint?',a:'Submit complaints in writing to governance@hseducation.com.au or by post to the Chair of the Board. If unresolved, you may contact the ACNC at acnc.gov.au.'},
   ];
 
