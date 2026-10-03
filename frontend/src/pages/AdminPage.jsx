@@ -273,7 +273,7 @@ const ProjectsTab = ({ canEdit }) => {
 // Manage everyone who can log in to the console — super admins, admins and
 // other staff. Roles are enforced server-side; this screen just edits them.
 const ROLE_INFO = {
-  superadmin: { label: 'Super Admin', desc: 'Everything, including Users, Square Settings and Database Tables.' },
+  superadmin: { label: 'Super Admin', desc: 'Everything, including Users, API Key Settings and Database Tables.' },
   admin:      { label: 'Admin',       desc: 'View donations and update their status; manage projects.' },
   editor:     { label: 'Editor',      desc: 'View donations; add, edit and remove projects.' },
   viewer:     { label: 'Viewer',      desc: 'Read-only access to donations and projects.' },
@@ -1730,8 +1730,8 @@ const SendEmailTab = () => {
         donors, members or partners through the system email.
       </p>
 
-      {info && !info.groqConfigured && <div className="payment-notice">AI drafting is off — a super admin needs to add the Groq API key in <strong>Groq AI</strong>. You can still write an email by hand below.</div>}
-      {info && !info.emailConfigured && <div className="payment-notice">System email is not set up — a super admin needs to complete <strong>Email Settings</strong> before anything can be sent.</div>}
+      {info && !info.groqConfigured && <div className="payment-notice">AI drafting is off — a super admin needs to add the Groq API key in <strong>API Key Settings → Groq AI</strong>. You can still write an email by hand below.</div>}
+      {info && !info.emailConfigured && <div className="payment-notice">System email is not set up — a super admin needs to complete <strong>API Key Settings → System Email</strong> before anything can be sent.</div>}
 
       <div style={card}>
         <div className="form-row">
@@ -1838,6 +1838,90 @@ const SendEmailTab = () => {
 };
 
 
+// ─── API Key Settings (tiles: Square, Email, Groq) ───────────────────────────
+// One place for every third-party credential. Each tile shows whether that
+// service is set up; click a tile to edit it.
+const ApiKeySettingsTab = ({ isSuperAdmin, role }) => {
+  const [active, setActive] = useState('square');
+  const [status, setStatus] = useState({});
+  const [tick, setTick] = useState(0);
+
+  useEffect(() => {
+    if (!isSuperAdmin) return;
+    let cancelled = false;
+    (async () => {
+      const get = async (path) => { try { return await adminFetch(path); } catch { return null; } };
+      const [sq, em, gq] = await Promise.all([get('/api/square/settings'), get('/api/email/settings'), get('/api/groq/settings')]);
+      if (cancelled) return;
+      setStatus({
+        square: sq ? !!(sq.accessTokenSet && sq.locationId && sq.applicationId) : null,
+        email:  em ? !!em.configured : null,
+        groq:   gq ? !!gq.apiKeySet : null,
+      });
+    })();
+    return () => { cancelled = true; };
+  }, [isSuperAdmin, active, tick]);
+
+  // Re-check every few seconds so a tile flips to "Configured" soon after you save.
+  useEffect(() => {
+    if (!isSuperAdmin) return undefined;
+    const id = setInterval(() => setTick((n) => n + 1), 5000);
+    return () => clearInterval(id);
+  }, [isSuperAdmin]);
+
+  if (!isSuperAdmin) {
+    return (
+      <div className="payment-notice">
+        🔒 API Key Settings can only be changed by a <strong>Super Admin</strong>. You are logged in as <strong>{role}</strong>.
+        Ask a Super Admin to set up Square, Email and Groq, or to change your role in the Users tab.
+      </div>
+    );
+  }
+
+  const tiles = [
+    { id: 'square', icon: '💳', title: 'Square', desc: 'Take card donations: environment, Application ID, Location ID and access token.' },
+    { id: 'email',  icon: '✉️', title: 'System Email', desc: 'SMTP server used for donor receipts, alerts and bulk emails.' },
+    { id: 'groq',   icon: '✨', title: 'Groq AI', desc: 'API key and model used to draft emails to donors, members and partners.' },
+  ];
+  const badge = (ok) => ok === null || ok === undefined
+    ? { text: 'Checking…', bg: 'var(--gray-100)', color: 'var(--gray-600)' }
+    : ok ? { text: '● Configured', bg: 'rgba(16,185,129,0.12)', color: '#065f46' }
+         : { text: '○ Not set up', bg: 'rgba(212,160,23,0.15)', color: '#8a6a0a' };
+
+  return (
+    <div>
+      <h3 style={{ fontFamily: 'var(--font-display)', color: 'var(--navy)', marginBottom: '0.4rem' }}>API Key Settings</h3>
+      <p style={{ color: 'var(--gray-600)', fontSize: '0.88rem', marginBottom: '1.2rem' }}>
+        Credentials for the services this website uses. Secrets are stored encrypted and never shown again. Changes take effect immediately.
+      </p>
+
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '1rem', marginBottom: '2rem' }}>
+        {tiles.map((t) => {
+          const b = badge(status[t.id]);
+          const on = active === t.id;
+          return (
+            <button key={t.id} type="button" onClick={() => setActive(t.id)}
+              style={{ textAlign: 'left', cursor: 'pointer', background: on ? 'rgba(13,115,119,0.06)' : 'white', border: `2px solid ${on ? 'var(--teal)' : 'var(--gray-200)'}`,
+                borderRadius: '16px', padding: '1.2rem', fontFamily: 'var(--font-body)', transition: 'all 0.15s' }}>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '0.6rem' }}>
+                <span style={{ fontSize: '1.6rem' }}>{t.icon}</span>
+                <span style={{ fontSize: '0.7rem', fontWeight: 700, padding: '0.2rem 0.6rem', borderRadius: 100, background: b.bg, color: b.color }}>{b.text}</span>
+              </div>
+              <div style={{ fontFamily: 'var(--font-display)', fontWeight: 600, color: 'var(--navy)', fontSize: '1.05rem', marginBottom: '0.3rem' }}>{t.title}</div>
+              <div style={{ fontSize: '0.8rem', color: 'var(--gray-600)', lineHeight: 1.5 }}>{t.desc}</div>
+            </button>
+          );
+        })}
+      </div>
+
+      {active === 'square' && <SquareSettingsTab key="square" />}
+      {active === 'email'  && <EmailSettingsTab key="email" />}
+      {active === 'groq'   && <GroqSettingsTab key="groq" />}
+    </div>
+  );
+};
+
+
 // ─── Main Admin page ─────────────────────────────────────────────────────────
 const AdminPage = () => {
   const [checkingSession, setCheckingSession] = useState(true);
@@ -1892,22 +1976,18 @@ const AdminPage = () => {
               <div className={`tab${tab === 'donations' ? ' active' : ''}`} onClick={() => setTab('donations')}>Donations</div>
               <div className={`tab${tab === 'projects' ? ' active' : ''}`} onClick={() => setTab('projects')}>Projects</div>
               <div className={`tab${tab === 'images' ? ' active' : ''}`} onClick={() => setTab('images')}>Images</div>
+              <div className={`tab${tab === 'apikeys' ? ' active' : ''}`} onClick={() => setTab('apikeys')}>API Key Settings</div>
               {canSendMail && <div className={`tab${tab === 'mail' ? ' active' : ''}`} onClick={() => setTab('mail')}>Send Email</div>}
               {canSendMail && <div className={`tab${tab === 'contacts' ? ' active' : ''}`} onClick={() => setTab('contacts')}>Contacts</div>}
               {isSuperAdmin && <div className={`tab${tab === 'users' ? ' active' : ''}`} onClick={() => setTab('users')}>Users</div>}
-              {isSuperAdmin && <div className={`tab${tab === 'square' ? ' active' : ''}`} onClick={() => setTab('square')}>Square Settings</div>}
-              {isSuperAdmin && <div className={`tab${tab === 'email' ? ' active' : ''}`} onClick={() => setTab('email')}>Email Settings</div>}
-              {isSuperAdmin && <div className={`tab${tab === 'groq' ? ' active' : ''}`} onClick={() => setTab('groq')}>Groq AI</div>}
               {isSuperAdmin && <div className={`tab${tab === 'database' ? ' active' : ''}`} onClick={() => setTab('database')}>Database Tables</div>}
             </div>
 
             {tab === 'donations' && <DonationsTab />}
             {tab === 'projects' && <ProjectsTab canEdit={canEditProjects} />}
             {tab === 'images' && <ImagesTab canEdit={canEditProjects} />}
+            {tab === 'apikeys' && <ApiKeySettingsTab isSuperAdmin={isSuperAdmin} role={admin.role} />}
             {tab === 'users' && isSuperAdmin && <UsersTab currentUsername={admin.username} />}
-            {tab === 'square' && isSuperAdmin && <SquareSettingsTab />}
-            {tab === 'email' && isSuperAdmin && <EmailSettingsTab />}
-            {tab === 'groq' && isSuperAdmin && <GroqSettingsTab />}
             {tab === 'mail' && canSendMail && <SendEmailTab />}
             {tab === 'contacts' && canSendMail && <ContactsTab />}
             {tab === 'database' && isSuperAdmin && <DatabaseTablesTab />}

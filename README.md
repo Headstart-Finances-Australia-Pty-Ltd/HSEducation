@@ -443,3 +443,5 @@ All photos are stored in the `site_images` table (BYTEA) and served from `/api/i
 - **Admin Console → Contacts** (admin+): members and partners. Donors come from the donations table automatically.
 - **Admin Console → Send Email** (admin+): describe the email, Groq drafts it, you edit, send a test, then send to donors / members / partners (max 500 per send). Every email gets an unsubscribe link (`/api/mail/unsubscribe`); unsubscribed people are skipped. Nothing is ever sent without a person pressing Send.
 - Run `npm install` in `backend/js` (adds `groq-sdk`) or just redeploy — the Docker build installs it.
+
+> **Admin Console tabs:** Square, System Email and Groq AI credentials now live together under **API Key Settings** (three tiles, each showing whether it's set up). Super Admin only; other roles see a note explaining why.
