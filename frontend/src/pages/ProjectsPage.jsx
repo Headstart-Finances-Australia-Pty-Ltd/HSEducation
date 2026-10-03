@@ -1,22 +1,13 @@
-import { useState } from 'react';
 import IMGS from '../images';
 import Icon from '../components/Icon';
 
 const ProjectsPage = ({ setPage }) => {
-  const [filter, setFilter] = useState('All');
-  const cats = ['All','Scholarships','Literacy','Indigenous','Vocational','Infrastructure'];
-  const projects = [
-    {cat:'Scholarships',img:IMGS.scholarship,title:'Future Leaders Bursary',loc:'NSW & VIC',desc:'Annual scholarships of up to $5,000 for high-achieving Year 11/12 students from low-income households. Covers fees, uniforms, textbooks and devices.',pct:72,goal:'$180,000',students:89,status:'Active'},
-    {cat:'Literacy',img:IMGS.literacy,title:'Read to Succeed',loc:'QLD & SA',desc:'Intensive 10-week literacy intervention in 12 primary schools. Evidence-based approach with qualified literacy coaches working 1:1 and in small groups.',pct:88,goal:'$95,000',students:340,status:'Active'},
-    {cat:'Indigenous',img:IMGS.indigenous,title:'Remote Learning Connect',loc:'NT & WA (Remote)',desc:'Satellite connectivity, devices and culturally appropriate curricula for First Nations students in remote communities.',pct:55,goal:'$240,000',students:210,status:'Active'},
-    {cat:'Vocational',img:IMGS.vocational,title:'Skills for Life',loc:'All States',desc:'Partnered with TAFE colleges to fund Certificate II and III enrolment fees for young people aged 16–25 who have disengaged from schooling.',pct:65,goal:'$110,000',students:187,status:'Active'},
-    {cat:'Infrastructure',img:IMGS.infrastructure,title:'Resource Rich Schools Grant',loc:'Regional Australia',desc:'Equipment and resource grants to under-resourced schools — science kits, library books, sports equipment, and maker-space tools.',pct:40,goal:'$85,000',students:1400,status:'Active'},
-    {cat:'Literacy',img:IMGS.mathsProgram,title:'Maths Mastery Program',loc:'VIC & QLD',desc:'After-school numeracy tutoring for Years 3–8 students performing below the national minimum standard.',pct:93,goal:'$60,000',students:265,status:'Nearly Funded'},
-    {cat:'Scholarships',img:IMGS.regional,title:'Regional Excellence Award',loc:'QLD, SA, WA',desc:'Scholarships for academically gifted regional students, supporting university transition including relocation assistance.',pct:30,goal:'$200,000',students:24,status:'Fundraising'},
-    {cat:'Indigenous',img:IMGS.twoWay,title:'Two-Way Learning Initiative',loc:'NT',desc:'Culturally responsive curriculum co-designed with Elders integrating community language and knowledge with national curriculum.',pct:48,goal:'$150,000',students:180,status:'Active'},
-    {cat:'Vocational',img:IMGS.pathways,title:'Pathways to Employment',loc:'NSW, VIC, SA',desc:'Career mentorship and work-placement connecting Year 10–12 students with industry professionals across healthcare, trades and technology.',pct:78,goal:'$75,000',students:312,status:'Nearly Funded'},
+  const phases = [
+    {n:'1',title:'Needs Verification',text:'Identify and assess schools in need, with on-site visits confirming educational and infrastructure gaps.'},
+    {n:'2',title:'Procurement & Delivery',text:'Purchase and directly deliver classroom infrastructure and learning materials — no cash grants to third parties.'},
+    {n:'3',title:'Monitoring & Reporting',text:'Document delivery, maintain financial and operational records, and evaluate whether resources met the identified needs.'},
+    {n:'4',title:'Expansion',text:'As funding allows, extend support to other disadvantaged communities internationally and introduce scholarships.'},
   ];
-  const filtered = filter==='All' ? projects : projects.filter(p=>p.cat===filter);
 
   return (
     <div className="page-enter">
@@ -24,43 +15,55 @@ const ProjectsPage = ({ setPage }) => {
         <div className="page-hero-bg"><img src={IMGS.communityGroup} alt="Education programs"/></div>
         <div className="page-hero-overlay"/>
         <div className="page-hero-content">
-          <div className="section-label" style={{color:'#065f46'}}>Our Programs</div>
-          <h1 style={{fontFamily:'var(--font-display)',fontSize:'clamp(2rem,4vw,3rem)',color:'#064e3b',marginBottom:'1rem'}}>Projects Making a <em style={{color:'#065f46'}}>Real Difference</em></h1>
-          <p style={{color:'#065f46',fontSize:'1.05rem'}}>Every HS Education program is designed with evidence, co-designed with communities, and rigorously evaluated for impact.</p>
+          <div className="section-label" style={{color:'#065f46'}}>Our Projects</div>
+          <h1 style={{fontFamily:'var(--font-display)',fontSize:'clamp(2rem,4vw,3rem)',color:'#064e3b',marginBottom:'1rem'}}>Our First Project Is <em style={{color:'#065f46'}}>In Development</em></h1>
+          <p style={{color:'#065f46',fontSize:'1.05rem'}}>We directly provide schools with infrastructure, learning materials and, where funding permits, scholarships — starting with a school in rural India.</p>
         </div>
       </div>
 
       <section className="section">
         <div className="section-inner">
-          <div style={{display:'flex',gap:'0.5rem',flexWrap:'wrap',marginBottom:'2.5rem'}}>
-            {cats.map(c => (
-              <button key={c} onClick={() => setFilter(c)} style={{padding:'0.5rem 1.2rem',borderRadius:'100px',fontSize:'0.88rem',fontWeight:600,cursor:'pointer',background:filter===c?'var(--navy)':'white',color:filter===c?'white':'var(--gray-600)',border:`1.5px solid ${filter===c?'var(--navy)':'var(--gray-200)'}`,transition:'all 0.2s',fontFamily:'var(--font-body)'}}>
-                {c}
-              </button>
-            ))}
-          </div>
-          <div className="cards-grid cards-3">
-            {filtered.map(({cat,img,title,loc,desc,pct,goal,students,status}) => (
-              <div key={title} className="prog-card">
-                <div className="prog-card-img">
-                  <img src={img} alt={title}/>
-                  <div className="prog-card-img-overlay"/>
-                  <span style={{position:'absolute',top:'1rem',right:'1rem',background:status==='Nearly Funded'?'rgba(212,160,23,0.9)':status==='Fundraising'?'rgba(244,63,94,0.85)':'rgba(13,115,119,0.9)',color:'white',fontSize:'0.73rem',fontWeight:700,padding:'0.25rem 0.75rem',borderRadius:'100px'}}>{status}</span>
-                </div>
-                <div className="prog-card-body">
-                  <span className="prog-tag">{cat}</span>
-                  <div className="prog-title">{title}</div>
-                  <div style={{fontSize:'0.78rem',color:'var(--gray-500)',marginBottom:'0.5rem',display:'flex',alignItems:'center',gap:'4px'}}><Icon name="pin" size={12}/> {loc}</div>
-                  <p className="prog-text">{desc}</p>
-                  <div className="prog-progress"><div className="prog-progress-bar" style={{width:`${pct}%`}}/></div>
-                  <div className="prog-meta" style={{marginBottom:'1rem'}}><span><strong style={{color:'var(--teal)'}}>{pct}%</strong> funded</span><span>Goal: <strong>{goal}</strong></span></div>
-                  <div style={{display:'flex',alignItems:'center',justifyContent:'space-between'}}>
-                    <span style={{fontSize:'0.82rem',color:'var(--gray-600)',display:'flex',alignItems:'center',gap:'4px'}}><Icon name="users" size={14}/> {students.toLocaleString()} students</span>
-                    <button className="btn-teal" style={{padding:'0.4rem 1rem',fontSize:'0.82rem'}} onClick={() => setPage('Donate')}>Fund This</button>
-                  </div>
+          {/* Featured project */}
+          <div className="prog-card" style={{display:'grid',gridTemplateColumns:'1fr 1.2fr',gap:0,marginBottom:'4rem',maxWidth:'none'}}>
+            <div className="prog-card-img" style={{height:'auto'}}>
+              <img src={IMGS.infrastructure} alt="Classroom infrastructure" style={{width:'100%',height:'100%',objectFit:'cover'}}/>
+              <div className="prog-card-img-overlay"/>
+              <span style={{position:'absolute',top:'1rem',right:'1rem',background:'rgba(212,160,23,0.92)',color:'white',fontSize:'0.73rem',fontWeight:700,padding:'0.25rem 0.75rem',borderRadius:'100px'}}>In Development</span>
+            </div>
+            <div className="prog-card-body" style={{padding:'2rem'}}>
+              <span className="prog-tag">Infrastructure</span>
+              <div className="prog-title" style={{fontSize:'1.3rem'}}>Rural School, Uttar Pradesh — India</div>
+              <div style={{fontSize:'0.78rem',color:'var(--gray-500)',marginBottom:'0.75rem',display:'flex',alignItems:'center',gap:'4px'}}><Icon name="pin" size={12}/> Uttar Pradesh, India (location kept confidential for now)</div>
+              <p className="prog-text" style={{fontSize:'0.92rem'}}>Our first project is currently in development. We have identified a school in a rural village in Uttar Pradesh where there is a need for additional classroom infrastructure and learning resources. We are currently completing the groundwork required to begin supporting the school.</p>
+              <div style={{marginTop:'1rem'}}>
+                <div style={{fontSize:'0.8rem',fontWeight:600,color:'var(--gray-700)',marginBottom:'0.5rem'}}>What we plan to provide:</div>
+                <div style={{display:'flex',flexWrap:'wrap',gap:'0.5rem',marginBottom:'1.2rem'}}>
+                  {['Desks & chairs','Learning materials','Books & stationery','Basic classroom equipment'].map(t => (
+                    <span key={t} style={{background:'rgba(13,115,119,0.08)',color:'var(--teal)',fontSize:'0.8rem',fontWeight:600,padding:'0.3rem 0.8rem',borderRadius:'100px'}}>{t}</span>
+                  ))}
                 </div>
               </div>
+              <button className="btn-teal" onClick={() => setPage('Donate')}>Support This Project</button>
+            </div>
+          </div>
+
+          {/* How we work */}
+          <div className="section-label">How We Work</div>
+          <h2 className="section-title" style={{marginBottom:'2.5rem'}}>From Needs Assessment <em>to Delivery</em></h2>
+          <div className="cards-grid cards-4" style={{marginTop:0}}>
+            {phases.map(({n,title,text}) => (
+              <div key={n} style={{background:'white',border:'1px solid var(--gray-200)',borderRadius:'16px',padding:'1.5rem'}}>
+                <div style={{width:36,height:36,borderRadius:'50%',background:'var(--navy)',color:'white',display:'flex',alignItems:'center',justifyContent:'center',fontFamily:'var(--font-display)',fontWeight:700,marginBottom:'1rem'}}>{n}</div>
+                <h3 style={{fontFamily:'var(--font-display)',color:'var(--navy)',fontSize:'1rem',marginBottom:'0.5rem'}}>{title}</h3>
+                <p style={{fontSize:'0.85rem',color:'var(--gray-600)',lineHeight:1.6}}>{text}</p>
+              </div>
             ))}
+          </div>
+
+          {/* Operating model */}
+          <div style={{marginTop:'4rem',background:'rgba(13,115,119,0.06)',border:'1px solid var(--teal)',borderRadius:'16px',padding:'2rem'}}>
+            <h3 style={{fontFamily:'var(--font-display)',color:'var(--navy)',marginBottom:'0.75rem'}}>Our Operating Model</h3>
+            <p style={{fontSize:'0.92rem',color:'var(--gray-700)',lineHeight:1.7}}>We procure and deliver educational resources directly to schools ourselves — we do not make cash grants to third parties. This keeps our model simple to verify: every dollar is tied to a resource we purchased and delivered, documented, and can report on.</p>
           </div>
         </div>
       </section>
@@ -69,9 +72,9 @@ const ProjectsPage = ({ setPage }) => {
         <div className="impact-banner-bg"><img src={IMGS.impactBanner} alt="Students"/></div>
         <div className="impact-banner-overlay"/>
         <div className="impact-banner-content">
-          <h2 style={{fontFamily:'var(--font-display)',fontSize:'clamp(1.8rem,3vw,2.4rem)',color:'#064e3b',marginBottom:'1rem'}}>Want to Fund a Specific Project?</h2>
-          <p style={{color:'#065f46',marginBottom:'2rem',fontSize:'1.05rem'}}>Direct your donation to the program that matters most to you.</p>
-          <button className="btn-primary" onClick={() => setPage('Donate')}><Icon name="heart" size={18}/> Choose a Project to Fund</button>
+          <h2 style={{fontFamily:'var(--font-display)',fontSize:'clamp(1.8rem,3vw,2.4rem)',color:'#064e3b',marginBottom:'1rem'}}>Help Us Launch Our First Project</h2>
+          <p style={{color:'#065f46',marginBottom:'2rem',fontSize:'1.05rem'}}>Your donation goes directly toward classroom infrastructure and learning materials.</p>
+          <button className="btn-primary" onClick={() => setPage('Donate')}><Icon name="heart" size={18}/> Donate Now</button>
         </div>
       </div>
     </div>
