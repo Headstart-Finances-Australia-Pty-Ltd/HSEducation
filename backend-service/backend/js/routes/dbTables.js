@@ -23,7 +23,7 @@ router.use(requireSuperAdmin);
 // tabs), and a generic editor would
 // let someone paste a plaintext password straight into password_hash,
 // silently creating a broken/insecure login (or expose stored secrets).
-const EXCLUDED_TABLES = ['admin_users', 'users', 'app_settings'];
+const EXCLUDED_TABLES = ['admin_users', 'users', 'app_settings', 'site_images'];
 
 function requireDb(req, res, next) {
   if (!db.isConnected()) {

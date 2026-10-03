@@ -76,6 +76,24 @@ CREATE TABLE IF NOT EXISTS app_settings (
 );
 
 -- ─────────────────────────────────────────────────────────
+-- TABLE: site_images
+-- The website's photos, stored as bytes so they survive redeploys and can
+-- be replaced from Admin Console → Images. `key` matches the slot names in
+-- backend/js/lib/imageCatalog.js (which also documents where each is used).
+-- ─────────────────────────────────────────────────────────
+CREATE TABLE IF NOT EXISTS site_images (
+  key         VARCHAR(60)  PRIMARY KEY,
+  label       VARCHAR(150) NOT NULL,
+  purpose     TEXT,
+  mime_type   VARCHAR(50)  NOT NULL,
+  data        BYTEA        NOT NULL,
+  size_bytes  INTEGER      NOT NULL,
+  is_custom   BOOLEAN      NOT NULL DEFAULT false,
+  updated_by  VARCHAR(100),
+  updated_at  TIMESTAMPTZ  NOT NULL DEFAULT NOW()
+);
+
+-- ─────────────────────────────────────────────────────────
 -- TABLE: admin_audit_log
 -- Records admin logins and sensitive actions for accountability.
 -- ─────────────────────────────────────────────────────────

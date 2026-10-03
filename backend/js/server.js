@@ -19,6 +19,7 @@ const { router: adminAuthRouter } = require('./routes/adminAuth');
 const usersRouter       = require('./routes/users');
 const squareRouter      = require('./routes/squareSettings');
 const emailRouter       = require('./routes/emailSettings');
+const imagesRouter      = require('./routes/images');
 const dbTablesRouter    = require('./routes/dbTables');
 const bootstrapAdmin    = require('./bootstrapAdmin');
 
@@ -51,6 +52,7 @@ app.use('/api/admin-auth',  adminAuthRouter);
 app.use('/api/users',       usersRouter);
 app.use('/api/square',      squareRouter);
 app.use('/api/email',       emailRouter);
+app.use('/api/images',      imagesRouter);
 app.use('/api/db-tables',   dbTablesRouter);
 app.use('/api/donations',   donationsRouter);
 app.use('/api/programs',    programsRouter);

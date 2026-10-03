@@ -431,3 +431,7 @@ ABN and DGR (tax-deductibility) status are intentionally not published on the si
 - Tables are created automatically on the first successful connection (`lib/ensureSchema.js`) — no manual `npm run migrate` is needed. If Neon is asleep the server retries on start and then every 30s.
 - Open `https://<your-app>/healthz`: `"database": "postgresql"` means connected; otherwise `databaseError` shows why.
 - **Admin Console → Email Settings** (super admin) holds the SMTP details used for donor receipts and "new donation" alerts, with a Test button.
+
+## Website images (Admin Console → Images)
+
+All photos are stored in the `site_images` table (BYTEA) and served from `/api/images/<key>`. The original photos ship in `backend/seed-images` and are loaded into an empty database automatically; existing rows (including images you've replaced) are never overwritten. Each image lists where it's used and its purpose (`backend/js/lib/imageCatalog.js` — update it if you add or move an `<img>` on a page). Editors, admins and super admins can replace images, edit the name/purpose, or restore the original; viewers can look but not change.

@@ -18,6 +18,7 @@ RUN npm install --omit=dev
 # Copy backend source
 COPY backend/js/ ./
 COPY backend/app_db ./app_db
+COPY backend/seed-images ./seed-images
 
 # Health check — Northflank uses this to verify the service is alive
 HEALTHCHECK --interval=30s --timeout=5s --start-period=15s --retries=3 \

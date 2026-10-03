@@ -1,5 +1,6 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import Icon from '../components/Icon';
+import Modal from '../components/Modal';
 import API_URL from '../config';
 
 // Wraps fetch with credentials:'include' (so the httpOnly admin session
@@ -1175,6 +1176,233 @@ const EmailSettingsTab = () => {
 };
 
 
+// ─── Images ──────────────────────────────────────────────────────────────────
+// Every photo on the website is stored in the database. Each row says where
+// the image appears and what it is for; "Replace" swaps it everywhere at once.
+const fmtBytes = (n) => (n >= 1048576 ? `${(n / 1048576).toFixed(1)} MB` : `${Math.max(1, Math.round(n / 1024))} KB`);
+const MAX_UPLOAD = 6 * 1024 * 1024;
+
+// Shrinks large photos in the browser before upload (keeps pages fast and
+// stays under the 6 MB server limit). GIFs and already-small files pass through.
+async function prepareImage(file) {
+  if (!/^image\/(jpeg|png|webp|gif)$/.test(file.type)) throw new Error('Please choose a JPG, PNG, WebP or GIF image.');
+  const tooBig = file.size > 2.5 * 1024 * 1024;
+  if (file.type === 'image/gif') {
+    if (file.size > MAX_UPLOAD) throw new Error('That GIF is over 6 MB — choose a smaller one.');
+    return file;
+  }
+  const url = URL.createObjectURL(file);
+  try {
+    const img = await new Promise((resolve, reject) => {
+      const i = new Image(); i.onload = () => resolve(i); i.onerror = () => reject(new Error('Could not read that image.')); i.src = url;
+    });
+    const MAX_EDGE = 2400;
+    const scale = Math.min(1, MAX_EDGE / Math.max(img.naturalWidth, img.naturalHeight));
+    if (scale === 1 && !tooBig) return file;
+    const canvas = document.createElement('canvas');
+    canvas.width = Math.round(img.naturalWidth * scale);
+    canvas.height = Math.round(img.naturalHeight * scale);
+    const ctx = canvas.getContext('2d');
+    ctx.fillStyle = '#fff'; ctx.fillRect(0, 0, canvas.width, canvas.height);
+    ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+    const blob = await new Promise((r) => canvas.toBlob(r, 'image/jpeg', 0.86));
+    if (!blob) throw new Error('Could not process that image.');
+    if (blob.size > MAX_UPLOAD) throw new Error('That image is still over 6 MB after resizing — choose a smaller one.');
+    return blob;
+  } finally {
+    URL.revokeObjectURL(url);
+  }
+}
+
+const ImagesTab = ({ canEdit }) => {
+  const [items, setItems] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
+  const [notice, setNotice] = useState('');
+  const [busyKey, setBusyKey] = useState(null);
+  const [pageFilter, setPageFilter] = useState('all');
+  const [search, setSearch] = useState('');
+  const [dims, setDims] = useState({});            // key -> "800×533"
+  const [preview, setPreview] = useState(null);    // item being previewed
+  const [editing, setEditing] = useState(null);    // item whose details are being edited
+  const [detailForm, setDetailForm] = useState({ label: '', purpose: '' });
+  const fileRef = useRef(null);
+  const replaceKey = useRef(null);
+
+  const load = useCallback(async () => {
+    setLoading(true); setError('');
+    try { setItems(await adminFetch('/api/images')); }
+    catch (err) { setError(err.message); }
+    finally { setLoading(false); }
+  }, []);
+  useEffect(() => { load(); }, [load]);
+
+  const imgUrl = (it) => `${API_URL}/api/images/${it.key}?v=${new Date(it.updated_at).getTime()}`;
+
+  const pages = ['all', 'Home', 'About', 'Projects', 'Impact', 'Donate', 'Legal', 'unused'];
+  const visible = items.filter((it) => {
+    if (pageFilter === 'unused' && it.usage.length) return false;
+    if (pageFilter !== 'all' && pageFilter !== 'unused' && !it.usage.some((u) => u.page === pageFilter)) return false;
+    const q = search.trim().toLowerCase();
+    if (!q) return true;
+    return [it.label, it.key, it.purpose, ...it.usage.map((u) => `${u.page} ${u.section} ${u.note}`)].join(' ').toLowerCase().includes(q);
+  });
+
+  const startReplace = (it) => { replaceKey.current = it.key; fileRef.current.value = ''; fileRef.current.click(); };
+
+  const onFileChosen = async (e) => {
+    const file = e.target.files?.[0];
+    const key = replaceKey.current;
+    if (!file || !key) return;
+    setBusyKey(key); setError(''); setNotice('');
+    try {
+      const body = await prepareImage(file);
+      const res = await fetch(`${API_URL}/api/images/${key}`, {
+        method: 'PUT', credentials: 'include', headers: { 'Content-Type': body.type || file.type }, body,
+      });
+      let data = null; try { data = await res.json(); } catch { /* no body */ }
+      if (res.status === 401) throw new Error('Your admin session has expired — please log in again.');
+      if (!res.ok) throw new Error(data?.message || 'Upload failed');
+      setNotice('Image replaced. It now shows everywhere it is used on the website.');
+      await load();
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setBusyKey(null);
+    }
+  };
+
+  const restore = async (it) => {
+    if (!window.confirm(`Restore the original photo for “${it.label}”? Your uploaded image will be replaced.`)) return;
+    setBusyKey(it.key); setError(''); setNotice('');
+    try {
+      await adminFetch(`/api/images/${it.key}/reset`, { method: 'POST' });
+      setNotice('Original image restored.');
+      await load();
+    } catch (err) { setError(err.message); }
+    finally { setBusyKey(null); }
+  };
+
+  const openDetails = (it) => { setEditing(it); setDetailForm({ label: it.label, purpose: it.purpose || '' }); };
+  const saveDetails = async (e) => {
+    e.preventDefault();
+    setBusyKey(editing.key); setError(''); setNotice('');
+    try {
+      await adminFetch(`/api/images/${editing.key}`, {
+        method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(detailForm),
+      });
+      setEditing(null);
+      setNotice('Details saved.');
+      await load();
+    } catch (err) { setError(err.message); }
+    finally { setBusyKey(null); }
+  };
+
+  const cell = { verticalAlign: 'top' };
+  const small = { fontSize: '0.78rem', color: 'var(--gray-600)', lineHeight: 1.5 };
+
+  return (
+    <div>
+      <h3 style={{ fontFamily: 'var(--font-display)', color: 'var(--navy)', marginBottom: '0.4rem' }}>Website Images</h3>
+      <p style={{ color: 'var(--gray-600)', fontSize: '0.88rem', marginBottom: '1.2rem' }}>
+        All photos on the site are stored in the database. Replacing an image updates <strong>every place it appears</strong> — check
+        “Where it's used” first. Large photos are resized automatically before upload (max 6 MB).
+      </p>
+
+      <input ref={fileRef} type="file" accept="image/jpeg,image/png,image/webp,image/gif" style={{ display: 'none' }} onChange={onFileChosen} />
+
+      <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.75rem', marginBottom: '1rem', alignItems: 'center' }}>
+        <select className="form-input" value={pageFilter} onChange={(e) => setPageFilter(e.target.value)} style={{ width: 'auto' }}>
+          {pages.map((p) => <option key={p} value={p}>{p === 'all' ? 'All pages' : p === 'unused' ? 'Spare (not shown)' : `${p} page`}</option>)}
+        </select>
+        <input className="form-input" value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Search images, sections, purpose…" style={{ maxWidth: 320 }} />
+        <span style={small}>{visible.length} of {items.length} images</span>
+      </div>
+
+      {error && <div className="payment-error">{error}</div>}
+      {notice && <div style={{ background: 'rgba(16,185,129,0.1)', border: '1px solid #10b981', color: '#065f46', borderRadius: '8px', padding: '0.7rem 1rem', marginBottom: '1rem', fontSize: '0.85rem' }}>{notice}</div>}
+      {loading && <p style={{ color: 'var(--gray-600)' }}>Loading images…</p>}
+
+      {!loading && (
+        <div style={{ background: 'white', border: '1px solid var(--gray-200)', borderRadius: '16px', overflowX: 'auto' }}>
+          <table className="admin-table" style={{ minWidth: 860 }}>
+            <thead>
+              <tr><th>Image</th><th>Where it's used</th><th>Purpose</th><th>File</th>{canEdit && <th></th>}</tr>
+            </thead>
+            <tbody>
+              {visible.map((it) => (
+                <tr key={it.key}>
+                  <td style={{ ...cell, width: 130 }}>
+                    <img src={imgUrl(it)} alt={it.label} onClick={() => setPreview(it)}
+                      onLoad={(e) => setDims((d) => (d[it.key] === `${e.target.naturalWidth}×${e.target.naturalHeight}` ? d : { ...d, [it.key]: `${e.target.naturalWidth}×${e.target.naturalHeight}` }))}
+                      style={{ width: 110, height: 76, objectFit: 'cover', borderRadius: 8, border: '1px solid var(--gray-200)', cursor: 'zoom-in', display: 'block', opacity: busyKey === it.key ? 0.4 : 1 }} />
+                  </td>
+                  <td style={cell}>
+                    <div style={{ fontWeight: 600, color: 'var(--navy)', fontSize: '0.88rem' }}>{it.label}</div>
+                    <div style={{ ...small, marginBottom: '0.35rem' }}><code>{it.key}</code></div>
+                    {it.usage.length === 0 && <span className="admin-status">Spare — not shown on site</span>}
+                    {it.usage.map((u, i) => (
+                      <div key={i} style={{ ...small, marginBottom: '0.2rem' }}>
+                        <strong style={{ color: 'var(--teal)' }}>{u.page}</strong> › {u.section}
+                        {u.note && <span style={{ color: 'var(--gray-500)' }}> — {u.note}</span>}
+                      </div>
+                    ))}
+                  </td>
+                  <td style={{ ...cell, ...small, maxWidth: 260 }}>{it.purpose || <em>No description</em>}</td>
+                  <td style={{ ...cell, ...small, whiteSpace: 'nowrap' }}>
+                    {dims[it.key] && <div>{dims[it.key]} px</div>}
+                    <div>{fmtBytes(it.size_bytes)}</div>
+                    <div>{it.is_custom ? 'Custom upload' : 'Original'}</div>
+                    <div style={{ color: 'var(--gray-500)' }}>{new Date(it.updated_at).toLocaleDateString()}{it.updated_by ? ` · ${it.updated_by}` : ''}</div>
+                    {it.recommended && <div style={{ color: 'var(--gray-500)', whiteSpace: 'normal', maxWidth: 160, marginTop: '0.25rem' }}>Best: {it.recommended}</div>}
+                  </td>
+                  {canEdit && (
+                    <td style={{ ...cell, whiteSpace: 'nowrap' }}>
+                      <button className="btn-outline" type="button" onClick={() => startReplace(it)} disabled={busyKey === it.key} style={{ marginBottom: '0.4rem', display: 'block' }}>
+                        {busyKey === it.key ? 'Working…' : 'Replace'}
+                      </button>
+                      <button type="button" onClick={() => openDetails(it)} style={{ ...linkBtn('var(--teal)'), display: 'block', marginBottom: '0.3rem' }}>Edit details</button>
+                      {it.is_custom && <button type="button" onClick={() => restore(it)} style={{ ...linkBtn('#dc2626'), display: 'block' }}>Restore original</button>}
+                    </td>
+                  )}
+                </tr>
+              ))}
+              {visible.length === 0 && <tr><td colSpan={canEdit ? 5 : 4} style={{ textAlign: 'center', color: 'var(--gray-500)', padding: '2rem' }}>No images match.</td></tr>}
+            </tbody>
+          </table>
+        </div>
+      )}
+
+      <Modal open={!!preview} onClose={() => setPreview(null)} title={preview?.label || ''} width={760}>
+        {preview && (
+          <div>
+            <img src={imgUrl(preview)} alt={preview.label} style={{ width: '100%', maxHeight: '55vh', objectFit: 'contain', borderRadius: 8, background: 'var(--gray-100)' }} />
+            <p style={{ ...small, marginTop: '0.8rem' }}>{preview.purpose}</p>
+          </div>
+        )}
+      </Modal>
+
+      <Modal open={!!editing} onClose={() => setEditing(null)} title="Edit image details" width={500}>
+        {editing && (
+          <form onSubmit={saveDetails}>
+            <div className="form-group">
+              <label className="form-label">Name</label>
+              <input className="form-input" value={detailForm.label} onChange={(e) => setDetailForm({ ...detailForm, label: e.target.value })} maxLength={150} required />
+            </div>
+            <div className="form-group">
+              <label className="form-label">Purpose — what is this image for?</label>
+              <textarea className="form-input" rows={4} value={detailForm.purpose} onChange={(e) => setDetailForm({ ...detailForm, purpose: e.target.value })} maxLength={1000} style={{ resize: 'vertical' }} />
+            </div>
+            <p style={{ ...small, marginBottom: '1rem' }}>The “Where it's used” list is maintained automatically from the website's pages.</p>
+            <button className="donate-btn" type="submit" disabled={busyKey === editing.key}>Save</button>
+          </form>
+        )}
+      </Modal>
+    </div>
+  );
+};
+
+
 // ─── Main Admin page ─────────────────────────────────────────────────────────
 const AdminPage = () => {
   const [checkingSession, setCheckingSession] = useState(true);
@@ -1227,6 +1455,7 @@ const AdminPage = () => {
             <div className="tabs">
               <div className={`tab${tab === 'donations' ? ' active' : ''}`} onClick={() => setTab('donations')}>Donations</div>
               <div className={`tab${tab === 'projects' ? ' active' : ''}`} onClick={() => setTab('projects')}>Projects</div>
+              <div className={`tab${tab === 'images' ? ' active' : ''}`} onClick={() => setTab('images')}>Images</div>
               {isSuperAdmin && <div className={`tab${tab === 'users' ? ' active' : ''}`} onClick={() => setTab('users')}>Users</div>}
               {isSuperAdmin && <div className={`tab${tab === 'square' ? ' active' : ''}`} onClick={() => setTab('square')}>Square Settings</div>}
               {isSuperAdmin && <div className={`tab${tab === 'email' ? ' active' : ''}`} onClick={() => setTab('email')}>Email Settings</div>}
@@ -1235,6 +1464,7 @@ const AdminPage = () => {
 
             {tab === 'donations' && <DonationsTab />}
             {tab === 'projects' && <ProjectsTab canEdit={canEditProjects} />}
+            {tab === 'images' && <ImagesTab canEdit={canEditProjects} />}
             {tab === 'users' && isSuperAdmin && <UsersTab currentUsername={admin.username} />}
             {tab === 'square' && isSuperAdmin && <SquareSettingsTab />}
             {tab === 'email' && isSuperAdmin && <EmailSettingsTab />}

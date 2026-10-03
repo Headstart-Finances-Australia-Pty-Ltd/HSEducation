@@ -40,6 +40,8 @@ RUN npm install --omit=dev
 COPY backend/js/ ./
 # SQL schema + seed — applied automatically on first database connection
 COPY backend/app_db ./app_db
+# Original website photos — loaded into the database on first run
+COPY backend/seed-images ./seed-images
 
 # Copy React build into backend's public folder
 # Express serves this as static files

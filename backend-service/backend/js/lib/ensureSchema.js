@@ -26,6 +26,13 @@ module.exports = async function ensureSchema(pool) {
   await pool.query(fs.readFileSync(schemaPath, 'utf-8'));
   console.log('✅ Database schema is up to date.');
 
+  // Website photos (stored in the database) — add any that are missing.
+  try {
+    await require('./images').seed((sql, params) => pool.query(sql, params));
+  } catch (err) {
+    console.error('⚠️  Could not seed site images:', err.message);
+  }
+
   const { rows } = await pool.query(
     'SELECT (SELECT COUNT(*) FROM programs) + (SELECT COUNT(*) FROM providers) AS total'
   );

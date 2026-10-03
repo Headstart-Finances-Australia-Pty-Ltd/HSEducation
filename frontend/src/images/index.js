@@ -1,3 +1,4 @@
+import API_URL from '../config';
 import heroStudents   from './photos/heroStudents.jpg';
 import missionKids    from './photos/missionKids.jpg';
 import communityGroup from './photos/communityGroup.jpg';
@@ -26,29 +27,33 @@ import team6          from './photos/team6.jpg';
 import team7          from './photos/team7.jpg';
 import team8          from './photos/team8.jpg';
 
-const IMGS = {
-  heroStudents,
-  missionKids,
-  communityGroup,
-  aboutFounders,
-  impactBanner,
-  aboutMission,
-  donateHero,
-  scholarship,
-  literacy,
-  indigenous,
-  vocational,
-  infrastructure,
-  mathsProgram,
-  regional,
-  twoWay,
-  pathways,
+// Bundled originals — only used as a safety net if the API can't serve an image.
+const LOCAL = {
+  heroStudents, missionKids, communityGroup, aboutFounders, impactBanner,
+  aboutMission, donateHero, scholarship, literacy, indigenous, vocational,
+  infrastructure, mathsProgram, regional, twoWay, pathways,
   person1, person2, person3,
-  team1, team2, team3, team4,
-  team5, team6, team7, team8,
+  team1, team2, team3, team4, team5, team6, team7, team8,
+};
+
+// The site's photos live in the database and are edited from Admin Console →
+// Images, so every image is loaded from the API by its slot name.
+const IMGS = Object.fromEntries(
+  Object.keys(LOCAL).map((key) => [key, `${API_URL}/api/images/${key}`])
+);
+
+// If an image request fails (server starting up, database unavailable),
+// swap in the bundled original instead of showing a broken picture.
+export const installImageFallback = () => {
+  document.addEventListener('error', (e) => {
+    const el = e.target;
+    if (!el || el.tagName !== 'IMG' || el.dataset.fallbackUsed) return;
+    const m = /\/api\/images\/([A-Za-z0-9_]+)/.exec(el.getAttribute('src') || '');
+    if (m && LOCAL[m[1]]) {
+      el.dataset.fallbackUsed = '1';
+      el.src = LOCAL[m[1]];
+    }
+  }, true);
 };
 
 export default IMGS;
-
-
-

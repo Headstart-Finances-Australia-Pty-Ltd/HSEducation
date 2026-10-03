@@ -9,9 +9,12 @@ import ImpactPage from './pages/ImpactPage';
 import DonatePage from './pages/DonatePage';
 import LegalPage from './pages/LegalPage';
 import AdminPage from './pages/AdminPage';
+import { installImageFallback } from './images';
 
 export default function App() {
   const [page, setPage] = useState('Home');
+
+  useEffect(() => { installImageFallback(); }, []);
 
   useEffect(() => {
     window.scrollTo({ top: 0, behavior: 'smooth' });
