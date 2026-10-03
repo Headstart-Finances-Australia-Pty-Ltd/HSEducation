@@ -435,3 +435,11 @@ ABN and DGR (tax-deductibility) status are intentionally not published on the si
 ## Website images (Admin Console → Images)
 
 All photos are stored in the `site_images` table (BYTEA) and served from `/api/images/<key>`. The original photos ship in `backend/seed-images` and are loaded into an empty database automatically; existing rows (including images you've replaced) are never overwritten. Each image lists where it's used and its purpose (`backend/js/lib/imageCatalog.js` — update it if you add or move an `<img>` on a page). Editors, admins and super admins can replace images, edit the name/purpose, or restore the original; viewers can look but not change.
+
+## AI-written emails (Groq) & system email
+
+- **Admin Console → Groq AI** (super admin): paste your Groq API key (`gsk_…`), pick a model, press Test. The key is stored encrypted.
+- **Admin Console → Email Settings** (super admin): the SMTP server all emails are sent through.
+- **Admin Console → Contacts** (admin+): members and partners. Donors come from the donations table automatically.
+- **Admin Console → Send Email** (admin+): describe the email, Groq drafts it, you edit, send a test, then send to donors / members / partners (max 500 per send). Every email gets an unsubscribe link (`/api/mail/unsubscribe`); unsubscribed people are skipped. Nothing is ever sent without a person pressing Send.
+- Run `npm install` in `backend/js` (adds `groq-sdk`) or just redeploy — the Docker build installs it.
