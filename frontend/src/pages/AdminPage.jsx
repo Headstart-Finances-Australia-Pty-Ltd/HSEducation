@@ -1129,18 +1129,18 @@ const EmailSettingsTab = () => {
           </div>
           <div className="form-group">
             <label className="form-label">“From” Email Address</label>
-            <input className="form-input" type="email" value={form.fromAddress} onChange={set('fromAddress')} placeholder="giving@hseducation.com.au" />
+            <input className="form-input" type="email" value={form.fromAddress} onChange={set('fromAddress')} placeholder="giving@hseducation.org" />
             <p style={hint}>Must be an address your mail provider allows you to send from.</p>
           </div>
         </div>
         <div className="form-row">
           <div className="form-group">
             <label className="form-label">Reply-To (optional)</label>
-            <input className="form-input" type="email" value={form.replyTo} onChange={set('replyTo')} placeholder="info@hseducation.com.au" />
+            <input className="form-input" type="email" value={form.replyTo} onChange={set('replyTo')} placeholder="info@hseducation.org" />
           </div>
           <div className="form-group">
             <label className="form-label">Notify Admin At</label>
-            <input className="form-input" type="email" value={form.adminNotify} onChange={set('adminNotify')} placeholder="giving@hseducation.com.au" />
+            <input className="form-input" type="email" value={form.adminNotify} onChange={set('adminNotify')} placeholder="giving@hseducation.org" />
             <p style={hint}>Where “new donation” alerts are sent.</p>
           </div>
         </div>

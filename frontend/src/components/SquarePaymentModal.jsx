@@ -100,7 +100,7 @@ const SquarePaymentModal = ({ open, amount, frequency, onClose, onTokenized }) =
       {squareReady === false && (
         <div className="payment-notice">
           ⚠️ Online card payments aren't available right now. Please contact{' '}
-          <a href="mailto:giving@hseducation.com.au">giving@hseducation.com.au</a> to make your donation.
+          <a href="mailto:giving@hseducation.org">giving@hseducation.org</a> to make your donation.
         </div>
       )}
 

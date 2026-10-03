@@ -59,7 +59,7 @@ const DonatePage = () => {
       setPayOpen(false);
       setSubmitted(true);
     } catch (err) {
-      setError(err.message || 'Something went wrong. Please try again or contact giving@hseducation.com.au');
+      setError(err.message || 'Something went wrong. Please try again or contact giving@hseducation.org');
     } finally {
       setLoading(false);
     }
@@ -202,7 +202,7 @@ const DonatePage = () => {
                     </div>
                   ))}
                   <div style={{marginTop:'1rem',paddingTop:'1rem',borderTop:'1px solid rgba(255,255,255,0.15)',fontSize:'0.82rem',color:'rgba(255,255,255,0.65)'}}>
-                    📧 info@hseducation.com.au
+                    📧 info@hseducation.org
                   </div>
                 </div>
               </div>

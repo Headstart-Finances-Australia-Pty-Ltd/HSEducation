@@ -26,6 +26,9 @@ import team5          from './photos/team5.jpg';
 import team6          from './photos/team6.jpg';
 import team7          from './photos/team7.jpg';
 import team8          from './photos/team8.jpg';
+import teamHS         from './photos/teamHS.jpg';
+import teamPS         from './photos/teamPS.jpg';
+import teamTM         from './photos/teamTM.jpg';
 
 // Bundled originals — only used as a safety net if the API can't serve an image.
 const LOCAL = {
@@ -34,6 +37,7 @@ const LOCAL = {
   infrastructure, mathsProgram, regional, twoWay, pathways,
   person1, person2, person3,
   team1, team2, team3, team4, team5, team6, team7, team8,
+  teamHS, teamPS, teamTM,
 };
 
 // The site's photos live in the database and are edited from Admin Console →

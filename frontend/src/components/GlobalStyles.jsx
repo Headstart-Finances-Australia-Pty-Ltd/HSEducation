@@ -134,7 +134,9 @@ const GlobalStyles = () => (
     .team-card-img { height: 180px; overflow: hidden; }
     .team-card-img img { width: 100%; height: 100%; object-fit: cover; object-position: top; transition: transform 0.4s; }
     .team-card:hover .team-card-img img { transform: scale(1.05); }
-    .team-body { padding: 1.2rem 1rem; }
+    .team-avatar { width: 150px; height: 150px; border-radius: 50%; overflow: hidden; margin: 2rem auto 0; border: 4px solid white; box-shadow: 0 0 0 3px var(--teal), var(--shadow-md); background: var(--gray-100); }
+    .team-avatar img { width: 100%; height: 100%; object-fit: cover; object-position: center top; display: block; }
+    .team-body { padding: 1.2rem 1rem 1.5rem; }
     .team-name { font-family: var(--font-display); font-size: 1rem; color: var(--navy); margin-bottom: 0.2rem; }
     .team-role { font-size: 0.78rem; color: var(--teal); font-weight: 600; margin-bottom: 0.5rem; text-transform: uppercase; letter-spacing: 0.04em; }
     .team-bio { font-size: 0.82rem; color: var(--gray-600); line-height: 1.55; }

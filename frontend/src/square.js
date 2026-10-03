@@ -63,7 +63,7 @@ function loadSdk(environment) {
 export async function getSquarePayments() {
   const cfg = await loadSquareConfig();
   if (!cfg.configured) {
-    throw new Error('Online payments are not set up yet. Please contact giving@hseducation.com.au to donate.');
+    throw new Error('Online payments are not set up yet. Please contact giving@hseducation.org to donate.');
   }
   await loadSdk(cfg.environment);
   return window.Square.payments(cfg.applicationId, cfg.locationId);

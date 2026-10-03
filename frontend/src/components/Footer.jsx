@@ -12,7 +12,7 @@ const Footer = ({ setPage }) => (
               <div style={{ fontSize: '0.62rem', color: 'rgba(255,255,255,0.45)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>hseducation.com.au</div>
             </div>
           </div>
-          <p className="footer-brand">A newly established Australian charity directly providing classroom infrastructure and learning materials to disadvantaged schools, starting with our first project in India.</p>
+          <p className="footer-brand">An Australian charity founded by educators, social workers and experienced professionals, directly providing classroom infrastructure and learning materials to disadvantaged schools — starting in India.</p>
           <div style={{ display: 'flex', gap: '0.5rem', marginTop: '0.75rem', flexWrap: 'wrap' }}>
             <div className="footer-acnc">ACNC Registered</div>
           </div>
@@ -39,7 +39,7 @@ const Footer = ({ setPage }) => (
           <div className="footer-col-title">Contact</div>
           <ul className="footer-links">
             <li><a>📍 Sydney NSW 2000</a></li>
-            <li><a>📧 info@hseducation.com.au</a></li>
+            <li><a>📧 info@hseducation.org</a></li>
           </ul>
           <div style={{ marginTop: '0.75rem' }}>
             <div className="footer-col-title">Follow Us</div>

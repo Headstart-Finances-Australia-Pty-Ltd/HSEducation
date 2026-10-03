@@ -2,11 +2,39 @@ import { useState } from 'react';
 import IMGS from '../images';
 import Icon from '../components/Icon';
 import Modal from '../components/Modal';
+import API_URL from '../config';
 
 const initials = (name) => name.split(' ').map(w => w[0]).join('').slice(0, 2);
 
 const AboutPage = ({ setPage }) => {
   const [thanksOpen, setThanksOpen] = useState(false);
+  const EMPTY = { name: '', email: '', organisation: '', message: '', hs_trap_field: '' };
+  const [form, setForm] = useState(EMPTY);
+  const [sending, setSending] = useState(false);
+  const [formError, setFormError] = useState('');
+  const setField = (k) => (e) => setForm((f) => ({ ...f, [k]: e.target.value }));
+
+  const sendMessage = async (e) => {
+    e.preventDefault();
+    if (sending) return;
+    setFormError('');
+    setSending(true);
+    try {
+      const res = await fetch(`${API_URL}/api/contact-messages`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(form),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(data.message || 'Something went wrong. Please try again.');
+      setForm(EMPTY);          // clear the form automatically
+      setThanksOpen(true);
+    } catch (err) {
+      setFormError(err.message || 'Could not send your message. Please try again.');
+    } finally {
+      setSending(false);
+    }
+  };
   return (
   <div className="page-enter">
     <div className="page-hero">
@@ -15,7 +43,7 @@ const AboutPage = ({ setPage }) => {
       <div className="page-hero-content">
         <div className="section-label" style={{color:'#065f46'}}>About Headstart Education</div>
         <h1 style={{fontFamily:'var(--font-display)',fontSize:'clamp(2rem,4vw,3rem)',color:'#064e3b',marginBottom:'1rem'}}>A New Charity With <em style={{color:'#065f46'}}>a Clear Purpose</em></h1>
-        <p style={{color:'#065f46',fontSize:'1.05rem',lineHeight:1.7}}>A newly established Australian charity focused on advancing education for children in disadvantaged communities — currently preparing for our first project in India.</p>
+        <p style={{color:'#065f46',fontSize:'1.05rem',lineHeight:1.7}}>An Australian charity founded by educators, social workers and experienced professionals, focused on advancing education for children in disadvantaged communities — with our first project in India underway.</p>
       </div>
     </div>
 
@@ -53,8 +81,8 @@ const AboutPage = ({ setPage }) => {
               <img src={IMGS.aboutFounders} alt="Founding directors planning" style={{width:'100%',height:'100%',objectFit:'cover'}}/>
             </div>
             <div style={{position:'absolute',bottom:'-16px',left:'-16px',background:'white',borderRadius:'12px',padding:'1.2rem 1.5rem',boxShadow:'var(--shadow-md)',border:'1px solid var(--gray-200)'}}>
-              <div style={{fontFamily:'var(--font-display)',fontSize:'1.4rem',fontWeight:700,color:'var(--teal)'}}>Newly<br/>Established</div>
-              <div style={{fontSize:'0.8rem',color:'var(--gray-600)',marginTop:'4px'}}>Registered Australian charity</div>
+              <div style={{fontFamily:'var(--font-display)',fontSize:'1.4rem',fontWeight:700,color:'var(--teal)'}}>Registered<br/>Charity</div>
+              <div style={{fontSize:'0.8rem',color:'var(--gray-600)',marginTop:'4px'}}>Led by experienced professionals</div>
             </div>
           </div>
         </div>
@@ -95,13 +123,13 @@ const AboutPage = ({ setPage }) => {
         <p className="section-desc" style={{marginBottom:'2.5rem'}}>Headstart Education is run by its three founding directors, who oversee all strategic, financial and operational decisions.</p>
         <div className="cards-grid cards-3">
           {[
-            {name:'Harsh Singh',role:'Chairman & Director',bio:'Oversees all strategic, financial and operational decisions for Headstart Education Australia.'},
-            {name:'Pramod Singh',role:'Director',bio:'Oversees strategic and financial decisions, including donor funds and governance compliance.'},
-            {name:'Tavishi Makhija',role:'Director',bio:'Oversees operational decisions, including project delivery and on-the-ground coordination.'},
-          ].map(({name,role,bio}) => (
+            {name:'Harsh Singh',img:IMGS.teamHS,role:'Chairman & Director',bio:'Oversees all strategic, financial and operational decisions for Headstart Education Australia.'},
+            {name:'Pramod Singh',img:IMGS.teamPS,role:'Director',bio:'Oversees strategic and financial decisions, including donor funds and governance compliance.'},
+            {name:'Tavishi Makhija',img:IMGS.teamTM,role:'Director',bio:'Oversees operational decisions, including project delivery and on-the-ground coordination.'},
+          ].map(({name,img,role,bio}) => (
             <div key={name} className="team-card">
-              <div className="team-card-img" style={{display:'flex',alignItems:'center',justifyContent:'center',background:'linear-gradient(135deg,var(--navy),var(--teal))'}}>
-                <span style={{color:'white',fontFamily:'var(--font-display)',fontSize:'2rem',fontWeight:700}}>{initials(name)}</span>
+              <div className="team-avatar" title={name}>
+                <img src={img} alt={name}/>
               </div>
               <div className="team-body">
                 <div className="team-name">{name}</div>
@@ -123,7 +151,7 @@ const AboutPage = ({ setPage }) => {
             <h2 className="section-title">Contact <em>Headstart Education</em></h2>
             <p className="section-desc">Whether you're a donor, school, corporate partner, or community organisation, we'd love to hear from you.</p>
             <div style={{marginTop:'2rem'}}>
-              {[{icon:'pin',label:'Registered Office',val:'Sydney, NSW 2000'},{icon:'mail',label:'General Enquiries',val:'info@hseducation.com.au'},{icon:'mail',label:'Donations & Receipts',val:'giving@hseducation.com.au'}].map(({icon,label,val}) => (
+              {[{icon:'pin',label:'Registered Office',val:'Sydney, NSW 2000'},{icon:'mail',label:'General Enquiries',val:'info@hseducation.org'},{icon:'mail',label:'Donations & Receipts',val:'giving@hseducation.org'}].map(({icon,label,val}) => (
                 <div key={label} style={{display:'flex',gap:'1rem',alignItems:'flex-start',marginBottom:'1.2rem'}}>
                   <div style={{width:36,height:36,background:'rgba(13,115,119,0.1)',borderRadius:'8px',display:'flex',alignItems:'center',justifyContent:'center',flexShrink:0}}><Icon name={icon} size={18} color="var(--teal)"/></div>
                   <div><div style={{fontSize:'0.8rem',fontWeight:600,color:'var(--gray-500)',textTransform:'uppercase',letterSpacing:'0.05em'}}>{label}</div><div style={{fontSize:'0.9rem',color:'var(--gray-800)'}}>{val}</div></div>
@@ -131,14 +159,17 @@ const AboutPage = ({ setPage }) => {
               ))}
             </div>
           </div>
-          <div style={{background:'white',border:'1px solid var(--gray-200)',borderRadius:'16px',padding:'2rem'}}>
+          <form onSubmit={sendMessage} style={{background:'white',border:'1px solid var(--gray-200)',borderRadius:'16px',padding:'2rem'}}>
             <h3 style={{fontFamily:'var(--font-display)',color:'var(--navy)',marginBottom:'1.5rem'}}>Send Us a Message</h3>
-            <div className="form-group"><label className="form-label">Your Name</label><input className="form-input" placeholder="Jane Smith"/></div>
-            <div className="form-group"><label className="form-label">Email</label><input className="form-input" type="email" placeholder="jane@example.com.au"/></div>
-            <div className="form-group"><label className="form-label">Organisation (optional)</label><input className="form-input" placeholder="School, Company, etc."/></div>
-            <div className="form-group"><label className="form-label">Message</label><textarea className="form-input" rows={4} placeholder="How can we help?" style={{resize:'vertical'}}/></div>
-            <button className="donate-btn" onClick={() => setThanksOpen(true)}>Send Message</button>
-          </div>
+            <div className="form-group"><label className="form-label">Your Name</label><input className="form-input" placeholder="Jane Smith" value={form.name} onChange={setField('name')} maxLength={150} required/></div>
+            <div className="form-group"><label className="form-label">Email</label><input className="form-input" type="email" placeholder="jane@example.com.au" value={form.email} onChange={setField('email')} maxLength={255} required/></div>
+            <div className="form-group"><label className="form-label">Organisation (optional)</label><input className="form-input" placeholder="School, Company, etc." value={form.organisation} onChange={setField('organisation')} maxLength={200}/></div>
+            <div className="form-group"><label className="form-label">Message</label><textarea className="form-input" rows={4} placeholder="How can we help?" style={{resize:'vertical'}} value={form.message} onChange={setField('message')} maxLength={5000} required/></div>
+            {/* Honeypot — hidden from people, catches spam bots */}
+            <input type="text" name="hs_trap_field" tabIndex={-1} autoComplete="off" aria-hidden="true" value={form.hs_trap_field} onChange={setField('hs_trap_field')} style={{position:'absolute',left:'-9999px',height:0,width:0,opacity:0}}/>
+            {formError && <div role="alert" style={{background:'#fef2f2',border:'1px solid #fecaca',color:'#991b1b',borderRadius:'8px',padding:'0.6rem 0.9rem',fontSize:'0.85rem',marginBottom:'1rem'}}>{formError}</div>}
+            <button className="donate-btn" type="submit" disabled={sending} style={sending?{opacity:0.7,cursor:'not-allowed'}:undefined}>{sending ? 'Sending…' : 'Send Message'}</button>
+          </form>
         </div>
       </div>
     </section>
