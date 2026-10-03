@@ -81,13 +81,13 @@ function fromHeader(cfg) {
 }
 
 // Throws on failure. Returns nodemailer's info object.
-async function send({ to, subject, text, html, headers }) {
+async function send({ to, subject, text, html, headers, replyTo }) {
   const cfg = await getConfig();
   if (!cfg.configured) throw new Error('Email is not configured. Add SMTP details in Admin Console → API Key Settings → Email.');
   try {
     return await transportFor(cfg).sendMail({
       from: fromHeader(cfg), to, subject, text, html,
-      replyTo: cfg.replyTo || undefined,
+      replyTo: replyTo || cfg.replyTo || undefined,
       headers,
     });
   } catch (err) {
@@ -166,4 +166,33 @@ async function sendDonationEmails(donation) {
   }
 }
 
-module.exports = { getConfig, send, sendBatch, verify, sendDonationEmails };
+
+// Emails a website "Send Us a Message" enquiry to the team. Returns
+// { sent: true, to } or { sent: false, error } — never throws. The message is
+// already saved in the database by the time this runs.
+async function sendContactMessage(m) {
+  try {
+    const cfg = await getConfig();
+    if (!cfg.configured) {
+      const error = 'Email is not configured (no SMTP host / from address) — set it in Admin Console → API Key Settings → Email.';
+      console.warn('⚠️  Contact form email NOT sent:', error);
+      return { sent: false, error };
+    }
+    const to = cfg.adminNotify || cfg.replyTo || cfg.fromAddress || cfg.user;
+    if (!to) return { sent: false, error: 'No recipient address configured (set "admin notify" in Email settings).' };
+    await send({
+      to,
+      replyTo: m.email,
+      subject: `Website enquiry from ${m.name}${m.organisation ? ` (${m.organisation})` : ''}`,
+      text: `New message from the website contact form.\n\nName: ${m.name}\nEmail: ${m.email}\nOrganisation: ${m.organisation || '-'}\n\n${m.message}\n\n— Reply to this email to respond directly to ${m.name}.`,
+      html: `<p><strong>New message from the website contact form.</strong></p><p>Name: ${esc(m.name)}<br>Email: <a href="mailto:${esc(m.email)}">${esc(m.email)}</a><br>Organisation: ${esc(m.organisation || '-')}</p><p style="white-space:pre-wrap">${esc(m.message)}</p><p style="color:#666">Reply to this email to respond directly to ${esc(m.name)}.</p>`,
+    });
+    console.log(`✉️  Contact form email sent to ${to} (from visitor ${m.email})`);
+    return { sent: true, to };
+  } catch (err) {
+    console.warn('⚠️  Could not send contact-form email:', err.message);
+    return { sent: false, error: err.message };
+  }
+}
+
+module.exports = { getConfig, send, sendBatch, verify, sendDonationEmails, sendContactMessage };

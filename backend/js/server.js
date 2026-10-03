@@ -24,9 +24,11 @@ const groqRouter        = require('./routes/groqSettings');
 const contactsRouter    = require('./routes/contacts');
 const campaignsRouter   = require('./routes/emailCampaigns');
 const dbTablesRouter    = require('./routes/dbTables');
+const contactMsgRouter  = require('./routes/contactMessages');
 const bootstrapAdmin    = require('./bootstrapAdmin');
 
 const app  = express();
+app.set('trust proxy', 1);
 const PORT = process.env.PORT || 3000;
 
 // ── Middleware ────────────────────────────────────────────
@@ -58,6 +60,7 @@ app.use('/api/email',       emailRouter);
 app.use('/api/images',      imagesRouter);
 app.use('/api/groq',        groqRouter);
 app.use('/api/contacts',    contactsRouter);
+app.use('/api/contact-messages', contactMsgRouter);
 app.use('/api/mail',        campaignsRouter);
 app.use('/api/db-tables',   dbTablesRouter);
 app.use('/api/donations',   donationsRouter);

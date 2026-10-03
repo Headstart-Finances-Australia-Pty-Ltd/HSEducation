@@ -42,11 +42,25 @@ function sniffMime(buf) {
 // missing from the table (existing rows — including replaced images — are
 // never touched). `query` is (sql, params) => Promise.
 async function seed(query) {
-  const { rows } = await query('SELECT key FROM site_images');
+  const { rows } = await query('SELECT key, size_bytes, is_custom FROM site_images');
   const have = new Set(rows.map((r) => r.key));
-  let added = 0;
+  const existing = Object.fromEntries(rows.map((r) => [r.key, r]));
+  let added = 0, refreshed = 0;
   for (const c of catalog) {
-    if (have.has(c.key)) continue;
+    if (have.has(c.key)) {
+      // Never touch a photo that was uploaded from the Admin Console. An untouched
+      // original is refreshed if the file shipped with the site has changed.
+      const cur = existing[c.key];
+      if (cur && !cur.is_custom) {
+        const b = readSeed(c.key);
+        if (b && b.length !== cur.size_bytes) {
+          await query(`UPDATE site_images SET data=$2, mime_type=$3, size_bytes=$4, label=$5, purpose=$6, updated_at=NOW() WHERE key=$1 AND is_custom=false`,
+            [c.key, b, sniffMime(b) || 'image/jpeg', b.length, c.label, c.purpose]);
+          refreshed++;
+        }
+      }
+      continue;
+    }
     const buf = readSeed(c.key);
     if (!buf) continue;
     await query(
@@ -57,6 +71,7 @@ async function seed(query) {
     added++;
   }
   if (added) console.log(`🖼️  Seeded ${added} site image(s) into the database.`);
+  if (refreshed) console.log(`🖼️  Refreshed ${refreshed} original site image(s) with the updated versions.`);
 }
 
 // ── In-memory helpers (no database) ────────────────────────
