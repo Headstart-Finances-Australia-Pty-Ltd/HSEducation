@@ -1,7 +1,8 @@
 // ============================================================
-// HS Education — Database Layer
-// Auto-detects PostgreSQL. Falls back to in-memory store.
-// App works fully without a database installed.
+// Headstart Education — Database Layer
+// Connects to Neon PostgreSQL (or any Postgres) via DATABASE_URL.
+// Falls back to an in-memory store if no database is reachable,
+// so the app still runs for quick local testing without one.
 // ============================================================
 
 const { Pool } = require('pg');
@@ -10,53 +11,97 @@ const { Pool } = require('pg');
 const memStore = {
   donations: [],
   programs: [
-    { id:'p1', name:'Future Leaders Bursary',   category:'Scholarships', description:'Annual scholarships of up to $5,000 for high-achieving Year 11/12 students from low-income households.', location:'NSW & VIC',        goal_amount:180000, raised_amount:129600, status:'active',      image_url:null, created_at: new Date() },
-    { id:'p2', name:'Read to Succeed',           category:'Literacy',     description:'Intensive 10-week literacy intervention in 12 primary schools across regional QLD and SA.',              location:'QLD & SA',        goal_amount:95000,  raised_amount:83600,  status:'active',      image_url:null, created_at: new Date() },
-    { id:'p3', name:'Remote Learning Connect',   category:'Indigenous',   description:'Providing devices and culturally appropriate learning materials to First Nations students in remote NT and WA.', location:'NT & WA',    goal_amount:240000, raised_amount:132000, status:'active',      image_url:null, created_at: new Date() },
-    { id:'p4', name:'Skills for Life',           category:'Vocational',   description:'TAFE Certificate II and III enrolment fees for young people aged 16–25 who have disengaged from schooling.', location:'All States', goal_amount:110000, raised_amount:71500,  status:'active',      image_url:null, created_at: new Date() },
-    { id:'p5', name:'Resource Rich Schools Grant',category:'Infrastructure',description:'Equipment grants to under-resourced regional schools — science kits, books, sports gear and maker-space tools.', location:'Regional', goal_amount:85000,  raised_amount:34000,  status:'active',      image_url:null, created_at: new Date() },
-    { id:'p6', name:'Maths Mastery Program',     category:'Literacy',     description:'After-school numeracy tutoring for Years 3–8 students performing below national minimum standard.',      location:'VIC & QLD',       goal_amount:60000,  raised_amount:55800,  status:'active',      image_url:null, created_at: new Date() },
-    { id:'p7', name:'Regional Excellence Award', category:'Scholarships', description:'Scholarships for gifted regional students supporting university transition including relocation assistance.', location:'QLD, SA, WA', goal_amount:200000, raised_amount:60000,  status:'fundraising', image_url:null, created_at: new Date() },
-    { id:'p8', name:'Two-Way Learning Initiative',category:'Indigenous',  description:'Culturally responsive curriculum co-designed with Elders integrating community language with national standards.', location:'NT',     goal_amount:150000, raised_amount:72000,  status:'active',      image_url:null, created_at: new Date() },
-    { id:'p9', name:'Pathways to Employment',    category:'Vocational',   description:'Career mentorship connecting Year 10–12 students with industry professionals across healthcare, trades and tech.', location:'NSW, VIC, SA', goal_amount:75000, raised_amount:58500, status:'active', image_url:null, created_at: new Date() },
+    { id:'p1', name:'First Project — Rural School, Uttar Pradesh', category:'Infrastructure', description:'Our first project is currently in development. We have identified a school in a rural village in Uttar Pradesh where there is a need for additional classroom infrastructure and learning resources. We are currently completing the groundwork required to begin supporting the school.', location:'Uttar Pradesh, India', goal_amount:0, raised_amount:0, status:'fundraising', image_url:null, created_at: new Date() },
   ],
   providers: [
-    { id:'v1', name:'Stripe Australia',  type:'stripe',  is_active:true,  created_at: new Date() },
-    { id:'v2', name:'PayPal Australia',  type:'paypal',  is_active:true,  created_at: new Date() },
-    { id:'v3', name:'Manual / Cheque',   type:'manual',  is_active:true,  created_at: new Date() },
+    { id:'v1', name:'Square',            type:'square',  is_active:true,  created_at: new Date() },
+    { id:'v2', name:'Manual / Bank Transfer', type:'manual', is_active:true, created_at: new Date() },
   ],
+  adminUsers: [],   // populated by bootstrapAdmin.js on startup
+  auditLog: [],
   nextId: 1000,
 };
+
+// ── Build a Postgres connection string ─────────────────────
+// Preferred: a single DATABASE_URL (this is how Neon gives you your
+// connection details — copy it straight from the Neon dashboard). Falls
+// back to assembling one from discrete DB_* vars for a plain local Postgres
+// install that isn't using a connection string.
+function resolveConnectionString() {
+  if (process.env.DATABASE_URL) return process.env.DATABASE_URL;
+  const host = process.env.DB_HOST || 'localhost';
+  const port = process.env.DB_PORT || '5432';
+  const name = process.env.DB_NAME || 'hseducation';
+  const user = process.env.DB_USER || 'hse_user';
+  const pass = process.env.DB_PASSWORD || 'hse_password';
+  return `postgresql://${user}:${pass}@${host}:${port}/${name}`;
+}
+
+// node-postgres re-parses `connectionString` and lets any SSL mode embedded
+// in it (e.g. Neon's `?sslmode=require`) silently override an explicit
+// `ssl` option passed alongside it, which can crash the driver. Strip it
+// out of the URL and set SSL explicitly instead — same approach Kutumb uses.
+function stripSslParams(connectionString) {
+  try {
+    const url = new URL(connectionString);
+    url.searchParams.delete('sslmode');
+    url.searchParams.delete('ssl');
+    return url.toString();
+  } catch {
+    return connectionString;
+  }
+}
+
+function buildPoolConfig() {
+  const rawUrl = resolveConnectionString();
+  const connectionString = stripSslParams(rawUrl);
+  const isLocal = connectionString.includes('localhost') || connectionString.includes('127.0.0.1');
+  return {
+    connectionString,
+    // Neon (and most managed Postgres) requires TLS; a plain local
+    // install on localhost typically doesn't have a cert configured.
+    ssl: isLocal ? false : { rejectUnauthorized: false },
+    max: 5,
+    idleTimeoutMillis: 10000,
+    connectionTimeoutMillis: 5000,
+  };
+}
 
 // ── Try PostgreSQL ────────────────────────────────────────
 let pool = null;
 let usingDB = false;
 
+// Resolves once the initial connectivity check (below) has completed, so
+// startup code (like creating the default admin user) can wait for a
+// definitive answer instead of racing the async check.
+let resolveReady;
+const readyPromise = new Promise((resolve) => { resolveReady = resolve; });
+
 try {
-  pool = new Pool({
-    host:                   process.env.DB_HOST     || 'localhost',
-    port:                   parseInt(process.env.DB_PORT || '5432'),
-    database:               process.env.DB_NAME     || 'hseducation',
-    user:                   process.env.DB_USER     || 'hse_user',
-    password:               process.env.DB_PASSWORD || 'hse_password',
-    max:                    5,
-    idleTimeoutMillis:      10000,
-    connectionTimeoutMillis:2000,
+  pool = new Pool(buildPoolConfig());
+
+  pool.on('error', (err) => {
+    // A dropped idle connection shouldn't crash the whole server.
+    console.error('⚠️  Unexpected PostgreSQL pool error:', err.message);
   });
 
   pool.query('SELECT NOW()')
     .then(() => {
       usingDB = true;
-      console.log('✅ PostgreSQL connected — using database');
+      const which = process.env.DATABASE_URL ? 'Neon/DATABASE_URL' : 'DB_* vars';
+      console.log(`✅ PostgreSQL connected (${which}) — using database`);
     })
-    .catch(() => {
+    .catch((err) => {
       usingDB = false;
       console.log('⚠️  PostgreSQL not available — using in-memory store');
-      console.log('   App is fully functional. See README to set up PostgreSQL.');
-    });
+      console.log(`   Reason: ${err.message}`);
+      console.log('   See backend/js/.env.example to configure DATABASE_URL (Neon).');
+    })
+    .finally(() => resolveReady());
 
 } catch (e) {
   console.log('⚠️  PostgreSQL not configured — using in-memory store');
+  resolveReady();
 }
 
 // ── Unified query interface ───────────────────────────────
@@ -73,6 +118,11 @@ const db = {
 
   // Is database available?
   isConnected: () => usingDB,
+
+  // Resolves once the initial PostgreSQL connectivity check has finished —
+  // await this before code that needs a definitive "DB or in-memory?" answer
+  // right at startup (e.g. bootstrapAdmin.js).
+  ready: () => readyPromise,
 
   // In-memory store (always available as fallback)
   mem: memStore,

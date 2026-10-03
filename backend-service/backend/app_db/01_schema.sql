@@ -1,25 +1,51 @@
 -- ============================================================
--- HS Education — PostgreSQL Database Schema
+-- Headstart Education — PostgreSQL Schema (Neon-ready)
 -- File: 01_schema.sql
--- Run: psql -U hse_user -d hseducation -f 01_schema.sql
+-- Applied automatically by `npm run migrate` (backend/js/migrate.js),
+-- which runs on every app.cmd launch — so this file is written to be
+-- safe to run over and over: every statement is IF NOT EXISTS / OR
+-- REPLACE, and nothing here ever DROPs a table or deletes data.
 -- ============================================================
 
 -- ── Extensions ───────────────────────────────────────────
 CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
 
--- ── Drop tables (clean re-run) ────────────────────────────
-DROP TABLE IF EXISTS donations CASCADE;
-DROP TABLE IF EXISTS programs  CASCADE;
-DROP TABLE IF EXISTS providers CASCADE;
+-- ─────────────────────────────────────────────────────────
+-- TABLE: admin_users
+-- Admin console logins (bcrypt-hashed passwords; see backend/js/lib/auth.js)
+-- The first row is created automatically on startup — see bootstrapAdmin.js
+-- and ADMIN_USERNAME / ADMIN_PASSWORD in backend/js/.env
+-- ─────────────────────────────────────────────────────────
+CREATE TABLE IF NOT EXISTS admin_users (
+  id             UUID         PRIMARY KEY DEFAULT uuid_generate_v4(),
+  username       VARCHAR(100) UNIQUE NOT NULL,
+  password_hash  TEXT         NOT NULL,
+  name           VARCHAR(100) NOT NULL,
+  role           VARCHAR(20)  NOT NULL DEFAULT 'admin' CHECK (role IN ('admin','superadmin')),
+  created_at     TIMESTAMPTZ  NOT NULL DEFAULT NOW()
+);
+
+-- ─────────────────────────────────────────────────────────
+-- TABLE: admin_audit_log
+-- Records admin logins and sensitive actions for accountability.
+-- ─────────────────────────────────────────────────────────
+CREATE TABLE IF NOT EXISTS admin_audit_log (
+  id              SERIAL       PRIMARY KEY,
+  admin_username  VARCHAR(100),
+  action          VARCHAR(100) NOT NULL,   -- e.g. 'admin.login', 'program.update'
+  details         TEXT,
+  created_at      TIMESTAMPTZ  NOT NULL DEFAULT NOW()
+);
+CREATE INDEX IF NOT EXISTS idx_admin_audit_created ON admin_audit_log(created_at DESC);
 
 -- ─────────────────────────────────────────────────────────
 -- TABLE: providers
--- Stores donation payment providers (Stripe, PayPal, etc.)
+-- Stores donation payment providers (Square, manual, etc.)
 -- ─────────────────────────────────────────────────────────
-CREATE TABLE providers (
+CREATE TABLE IF NOT EXISTS providers (
   id             UUID        PRIMARY KEY DEFAULT uuid_generate_v4(),
   name           VARCHAR(100) NOT NULL,
-  type           VARCHAR(50)  NOT NULL CHECK (type IN ('stripe','paypal','eway','securepay','manual')),
+  type           VARCHAR(50)  NOT NULL CHECK (type IN ('square','stripe','paypal','eway','securepay','manual')),
   config_public  TEXT,                          -- public key / client id (safe to log)
   config_secret  TEXT,                          -- secret key (never returned in API GET)
   is_active      BOOLEAN     NOT NULL DEFAULT true,
@@ -34,7 +60,7 @@ COMMENT ON COLUMN providers.config_secret IS 'Encrypted secret key — never exp
 -- TABLE: programs
 -- Educational programs and projects receiving donations
 -- ─────────────────────────────────────────────────────────
-CREATE TABLE programs (
+CREATE TABLE IF NOT EXISTS programs (
   id             UUID         PRIMARY KEY DEFAULT uuid_generate_v4(),
   name           VARCHAR(200) NOT NULL,
   category       VARCHAR(50)  NOT NULL CHECK (category IN (
@@ -55,9 +81,9 @@ COMMENT ON TABLE programs IS 'Educational programs and projects that donations a
 
 -- ─────────────────────────────────────────────────────────
 -- TABLE: donations
--- Records every donation made to HS Education
+-- Records every donation made to Headstart Education
 -- ─────────────────────────────────────────────────────────
-CREATE TABLE donations (
+CREATE TABLE IF NOT EXISTS donations (
   id             UUID         PRIMARY KEY DEFAULT uuid_generate_v4(),
   first_name     VARCHAR(100) NOT NULL,
   last_name      VARCHAR(100),
@@ -77,16 +103,16 @@ CREATE TABLE donations (
   updated_at     TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
-COMMENT ON TABLE  donations IS 'All donations received by HS Education';
+COMMENT ON TABLE  donations IS 'All donations received by Headstart Education';
 COMMENT ON COLUMN donations.transaction_id IS 'Payment gateway transaction reference for reconciliation';
 
 -- ── Indexes ───────────────────────────────────────────────
-CREATE INDEX idx_donations_email      ON donations(email);
-CREATE INDEX idx_donations_status     ON donations(status);
-CREATE INDEX idx_donations_created    ON donations(created_at DESC);
-CREATE INDEX idx_donations_program    ON donations(program_id);
-CREATE INDEX idx_programs_category    ON programs(category);
-CREATE INDEX idx_programs_status      ON programs(status);
+CREATE INDEX IF NOT EXISTS idx_donations_email      ON donations(email);
+CREATE INDEX IF NOT EXISTS idx_donations_status     ON donations(status);
+CREATE INDEX IF NOT EXISTS idx_donations_created    ON donations(created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_donations_program    ON donations(program_id);
+CREATE INDEX IF NOT EXISTS idx_programs_category    ON programs(category);
+CREATE INDEX IF NOT EXISTS idx_programs_status      ON programs(status);
 
 -- ── updated_at auto-trigger ──────────────────────────────
 CREATE OR REPLACE FUNCTION update_updated_at()
@@ -94,6 +120,9 @@ RETURNS TRIGGER AS $$
 BEGIN NEW.updated_at = NOW(); RETURN NEW; END;
 $$ LANGUAGE plpgsql;
 
-CREATE TRIGGER trg_donations_updated  BEFORE UPDATE ON donations  FOR EACH ROW EXECUTE FUNCTION update_updated_at();
-CREATE TRIGGER trg_programs_updated   BEFORE UPDATE ON programs   FOR EACH ROW EXECUTE FUNCTION update_updated_at();
-CREATE TRIGGER trg_providers_updated  BEFORE UPDATE ON providers  FOR EACH ROW EXECUTE FUNCTION update_updated_at();
+-- CREATE OR REPLACE TRIGGER requires Postgres 14+ (Neon runs a current
+-- version, so this is safe) — lets this file be re-run without an error
+-- on "trigger already exists", unlike plain CREATE TRIGGER.
+CREATE OR REPLACE TRIGGER trg_donations_updated  BEFORE UPDATE ON donations  FOR EACH ROW EXECUTE FUNCTION update_updated_at();
+CREATE OR REPLACE TRIGGER trg_programs_updated   BEFORE UPDATE ON programs   FOR EACH ROW EXECUTE FUNCTION update_updated_at();
+CREATE OR REPLACE TRIGGER trg_providers_updated  BEFORE UPDATE ON providers  FOR EACH ROW EXECUTE FUNCTION update_updated_at();

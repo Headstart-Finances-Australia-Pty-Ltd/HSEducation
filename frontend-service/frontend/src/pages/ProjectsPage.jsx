@@ -26,7 +26,7 @@ const ProjectsPage = ({ setPage }) => {
         <div className="page-hero-content">
           <div className="section-label" style={{color:'var(--gold-light)'}}>Our Programs</div>
           <h1 style={{fontFamily:'var(--font-display)',fontSize:'clamp(2rem,4vw,3rem)',color:'white',marginBottom:'1rem'}}>Projects Making a <em style={{color:'var(--gold-light)'}}>Real Difference</em></h1>
-          <p style={{color:'rgba(255,255,255,0.82)',fontSize:'1.05rem'}}>Every HS Education program is designed with evidence, co-designed with communities, and rigorously evaluated for impact.</p>
+          <p style={{color:'rgba(255,255,255,0.82)',fontSize:'1.05rem'}}>Every Headstart Education program is designed with evidence, co-designed with communities, and rigorously evaluated for impact.</p>
         </div>
       </div>
 

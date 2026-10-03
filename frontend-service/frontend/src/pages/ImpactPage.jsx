@@ -135,13 +135,13 @@ const ImpactPage = () => {
               <div>
                 <div style={{background:'white',border:'1px solid var(--gray-200)',borderRadius:'16px',padding:'2rem',marginBottom:'1.5rem'}}>
                   <h3 style={{fontFamily:'var(--font-display)',color:'var(--navy)',marginBottom:'1rem'}}>Governance Framework</h3>
-                  {['ACNC Registered Charity (since 2012)','DGR Endorsed by Australian Tax Office','ABN: 12 345 678 901','Compliant with all 5 ACNC Governance Standards','Annual independent financial audit','Child Safe Organisation — WWCC for all staff','Privacy Act 1988 compliant'].map(t => (
+                  {['Registered Australian charity','Constitution aligned with ACNC requirements','Safeguarding policies for children and vulnerable people','Internal financial controls to prevent fraud, corruption or misuse of funds','All personnel screened (WWCC or equivalent)','Privacy Act 1988 compliant'].map(t => (
                     <div key={t} style={{display:'flex',alignItems:'flex-start',gap:'10px',marginBottom:'0.75rem',fontSize:'0.88rem',color:'var(--gray-700)'}}><span style={{color:'var(--teal)',flexShrink:0,marginTop:'1px'}}><Icon name="check" size={16}/></span>{t}</div>
                   ))}
                 </div>
                 <div style={{background:'var(--navy)',borderRadius:'16px',padding:'2rem',color:'white'}}>
                   <h4 style={{fontFamily:'var(--font-display)',marginBottom:'1rem'}}>Complaints & Feedback</h4>
-                  <p style={{fontSize:'0.88rem',color:'rgba(255,255,255,0.8)',lineHeight:1.7,marginBottom:'1rem'}}>If you have a concern about HS Education's governance, programs or conduct:</p>
+                  <p style={{fontSize:'0.88rem',color:'rgba(255,255,255,0.8)',lineHeight:1.7,marginBottom:'1rem'}}>If you have a concern about Headstart Education's governance, programs or conduct:</p>
                   {['Email: governance@hseducation.com.au','Write to the Chair at our registered office','Report to the ACNC at acnc.gov.au'].map(t => (
                     <div key={t} style={{fontSize:'0.85rem',color:'rgba(255,255,255,0.75)',marginBottom:'0.5rem',display:'flex',gap:'8px'}}><span style={{color:'var(--gold-light)'}}>→</span>{t}</div>
                   ))}

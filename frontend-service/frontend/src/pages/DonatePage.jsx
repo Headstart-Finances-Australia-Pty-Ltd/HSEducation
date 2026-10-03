@@ -18,7 +18,7 @@ const DonatePage = () => {
         <div className="donate-hero-overlay"/>
         <div className="donate-hero-content">
           <div className="section-label" style={{color:'var(--gold-light)'}}>Make a Difference</div>
-          <h1 style={{fontFamily:'var(--font-display)',fontSize:'clamp(2rem,4vw,3rem)',color:'white',marginBottom:'1rem'}}>Donate to <em style={{color:'var(--gold-light)'}}>HS Education</em></h1>
+          <h1 style={{fontFamily:'var(--font-display)',fontSize:'clamp(2rem,4vw,3rem)',color:'white',marginBottom:'1rem'}}>Donate to <em style={{color:'var(--gold-light)'}}>Headstart Education</em></h1>
           <p style={{color:'rgba(255,255,255,0.82)',fontSize:'1.05rem',lineHeight:1.7}}>Your tax-deductible donation funds scholarships, learning support and community programs for Australian students in need. All donations over $2 are fully tax-deductible.</p>
         </div>
       </div>
@@ -30,7 +30,7 @@ const DonatePage = () => {
               <div style={{fontSize:'3rem',marginBottom:'1rem'}}>🎉</div>
               <h2 style={{fontFamily:'var(--font-display)',color:'var(--navy)',marginBottom:'0.75rem'}}>Thank You for Your Generosity!</h2>
               <p style={{color:'var(--gray-600)',marginBottom:'1rem'}}>Your donation of <strong>${custom||amount}</strong> will make a real difference. A tax receipt has been sent to <strong>{form.email}</strong>.</p>
-              <p style={{fontSize:'0.85rem',color:'var(--gray-600)'}}>HS Education — DGR-endorsed charity. ABN: 12 345 678 901</p>
+              <p style={{fontSize:'0.85rem',color:'var(--gray-600)'}}>Headstart Education Australia Pty Ltd — registered Australian charity.</p>
             </div>
           ) : (
             <div className="donation-grid">
@@ -83,10 +83,10 @@ const DonatePage = () => {
                     <img src={IMGS.communityGroup} alt="Community learning" style={{width:'100%',height:'100%',objectFit:'cover'}}/>
                   </div>
                   <div style={{background:'white',border:'1px solid var(--gray-200)',borderTop:'none',padding:'2rem'}}>
-                    <h3 style={{fontFamily:'var(--font-display)',color:'var(--navy)',marginBottom:'1.5rem',fontSize:'1.2rem'}}>Why Give to HS Education?</h3>
+                    <h3 style={{fontFamily:'var(--font-display)',color:'var(--navy)',marginBottom:'1.5rem',fontSize:'1.2rem'}}>Why Give to Headstart Education?</h3>
                     {[
                       {icon:'shield',title:'ACNC Registered',desc:'Fully registered and compliant with all ACNC governance standards.'},
-                      {icon:'award',title:'DGR Endorsed',desc:'Donations over $2 are fully tax-deductible. Receipt issued instantly.'},
+                      {icon:'award',title:'Secure Payments',desc:'Processed by Square, a PCI-DSS Level 1 compliant payment provider.'},
                       {icon:'chart',title:'87¢ to Programs',desc:'For every dollar donated, 87 cents goes directly to students.'},
                       {icon:'file',title:'Full Transparency',desc:'Annual reports and financials published publicly on our website and ACNC.'},
                     ].map(({icon,title,desc}) => (

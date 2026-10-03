@@ -8,6 +8,7 @@ import ProjectsPage from './pages/ProjectsPage';
 import ImpactPage from './pages/ImpactPage';
 import DonatePage from './pages/DonatePage';
 import LegalPage from './pages/LegalPage';
+import AdminPage from './pages/AdminPage';
 
 export default function App() {
   const [page, setPage] = useState('Home');
@@ -23,6 +24,10 @@ export default function App() {
     Impact:   <ImpactPage />,
     Donate:   <DonatePage />,
     Legal:    <LegalPage />,
+    // Admin is a normal page, reached only via the Footer link (it's not
+    // in the main nav). It handles its own login — see AdminPage.jsx —
+    // the real access control is enforced server-side by requireAdmin.
+    Admin:    <AdminPage />,
   };
 
   return (

@@ -8,16 +8,15 @@ const Footer = ({ setPage }) => (
           <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '1rem', cursor: 'pointer' }} onClick={() => setPage('Home')}>
             <Logo size={28} />
             <div>
-              <div style={{ fontFamily: 'var(--font-display)', fontWeight: 600, fontSize: '0.85rem' }}>HS Education</div>
+              <div style={{ fontFamily: 'var(--font-display)', fontWeight: 600, fontSize: '0.85rem' }}>Headstart Education</div>
               <div style={{ fontSize: '0.62rem', color: 'rgba(255,255,255,0.45)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>hseducation.com.au</div>
             </div>
           </div>
-          <p className="footer-brand">Empowering Australian learners through scholarships, literacy programs, Indigenous education, and vocational pathways.</p>
+          <p className="footer-brand">A newly established Australian charity directly providing classroom infrastructure and learning materials to disadvantaged schools, starting with our first project in India.</p>
           <div style={{ display: 'flex', gap: '0.5rem', marginTop: '0.75rem', flexWrap: 'wrap' }}>
             <div className="footer-acnc">ACNC Registered</div>
-            <div className="footer-acnc">✅ DGR Endorsed</div>
           </div>
-          <div style={{ marginTop: '0.4rem', fontSize: '0.68rem', color: 'rgba(255,255,255,0.4)' }}>ABN: xx xxx xxx xxx</div>
+          <div style={{ marginTop: '0.4rem', fontSize: '0.68rem', color: 'rgba(255,255,255,0.4)' }}>Headstart Education Australia Pty Ltd</div>
         </div>
         <div>
           <div className="footer-col-title">Navigation</div>
@@ -25,12 +24,13 @@ const Footer = ({ setPage }) => (
             {['Home', 'About', 'Projects', 'Impact', 'Donate', 'Legal'].map(p => (
               <li key={p}><a onClick={() => setPage(p)}>{p}</a></li>
             ))}
+            <li><a onClick={() => setPage('Admin')}>Admin</a></li>
           </ul>
         </div>
         <div>
-          <div className="footer-col-title">Programs</div>
+          <div className="footer-col-title">Our Focus</div>
           <ul className="footer-links">
-            {['Scholarships', 'Literacy Support', 'Indigenous Education', 'Vocational Pathways', 'School Grants', 'Volunteer'].map(t => (
+            {['Classroom Infrastructure', 'Learning Materials', 'Scholarships (Future)', 'Our First Project: India', 'Volunteer With Us', 'Fundraising Events'].map(t => (
               <li key={t}><a>{t}</a></li>
             ))}
           </ul>
@@ -52,11 +52,11 @@ const Footer = ({ setPage }) => (
         </div>
       </div>
       <div className="footer-bottom">
-        <span>© 2026 HS Education. All rights reserved. Registered Australian Charity.</span>
+        <span>© 2026 Headstart Education Australia Pty Ltd. All rights reserved. Registered Australian Charity.</span>
         <div style={{ display: 'flex', gap: '.5rem', flexWrap: 'wrap' }}>
-          <a style={{ cursor: 'pointer' }}>Privacy Policy</a>
-          <a style={{ cursor: 'pointer' }}>Terms of Use</a>
-          <a style={{ cursor: 'pointer' }}>Complaints</a>
+          <a style={{ cursor: 'pointer' }} onClick={() => setPage('Legal')}>Privacy Policy</a>
+          <a style={{ cursor: 'pointer' }} onClick={() => setPage('Legal')}>Terms of Use</a>
+          <a style={{ cursor: 'pointer' }} onClick={() => setPage('Legal')}>Complaints</a>
         </div>
       </div>
     </div>

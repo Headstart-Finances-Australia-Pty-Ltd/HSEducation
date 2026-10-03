@@ -11,7 +11,7 @@ const Nav = ({ page, setPage }) => {
         <div className="nav-logo" onClick={() => setPage('Home')}>
           <Logo size={44} />
           <div>
-            <div className="nav-logo-text">HS Education</div>
+            <div className="nav-logo-text">Headstart Education</div>
             <div className="nav-logo-sub">Empowering Australian Learners</div>
           </div>
         </div>

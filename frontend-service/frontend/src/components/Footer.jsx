@@ -8,16 +8,15 @@ const Footer = ({ setPage }) => (
           <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '1rem', cursor: 'pointer' }} onClick={() => setPage('Home')}>
             <Logo size={40} />
             <div>
-              <div style={{ fontFamily: 'var(--font-display)', fontWeight: 600, fontSize: '1.1rem' }}>HS Education</div>
+              <div style={{ fontFamily: 'var(--font-display)', fontWeight: 600, fontSize: '1.1rem' }}>Headstart Education</div>
               <div style={{ fontSize: '0.7rem', color: 'rgba(255,255,255,0.45)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>hseducation.com.au</div>
             </div>
           </div>
           <p className="footer-brand">Empowering Australian learners through scholarships, literacy programs, Indigenous education, and vocational pathways.</p>
           <div style={{ display: 'flex', gap: '0.5rem', marginTop: '1.5rem', flexWrap: 'wrap' }}>
             <div className="footer-acnc">🇦🇺 ACNC Registered</div>
-            <div className="footer-acnc">✅ DGR Endorsed</div>
           </div>
-          <div style={{ marginTop: '1rem', fontSize: '0.82rem', color: 'rgba(255,255,255,0.4)' }}>ABN: 12 345 678 901</div>
+          <div style={{ marginTop: '1rem', fontSize: '0.82rem', color: 'rgba(255,255,255,0.4)' }}>Headstart Education Australia Pty Ltd</div>
         </div>
         <div>
           <div className="footer-col-title">Navigation</div>
@@ -52,7 +51,7 @@ const Footer = ({ setPage }) => (
         </div>
       </div>
       <div className="footer-bottom">
-        <span>© 2024 HS Education. All rights reserved. Registered Australian Charity.</span>
+        <span>© 2024 Headstart Education. All rights reserved. Registered Australian Charity.</span>
         <div style={{ display: 'flex', gap: '1.5rem', flexWrap: 'wrap' }}>
           <a style={{ cursor: 'pointer' }}>Privacy Policy</a>
           <a style={{ cursor: 'pointer' }}>Terms of Use</a>

@@ -231,6 +231,42 @@ const GlobalStyles = () => (
     .cards-4 { grid-template-columns: repeat(4, 1fr); }
     .cards-2 { grid-template-columns: repeat(2, 1fr); }
 
+    /* MODAL / POPUP */
+    .modal-overlay { position: fixed; inset: 0; background: rgba(15,23,42,0.55); display: flex; align-items: center; justify-content: center; z-index: 1000; padding: 1.5rem; animation: fadeIn 0.18s ease; }
+    .modal-dialog { background: white; border-radius: 16px; width: 100%; box-shadow: 0 20px 60px rgba(0,0,0,0.3); max-height: 90vh; overflow-y: auto; animation: popIn 0.2s ease; }
+    .modal-header { display: flex; align-items: center; justify-content: space-between; padding: 1.25rem 1.5rem; border-bottom: 1px solid var(--gray-200); }
+    .modal-title { font-family: var(--font-display); font-weight: 600; font-size: 1.1rem; color: var(--navy); }
+    .modal-close { background: none; border: none; cursor: pointer; color: var(--gray-500); display: flex; padding: 4px; border-radius: 6px; }
+    .modal-close:hover { background: var(--gray-100); color: var(--gray-800); }
+    .modal-body { padding: 1.5rem; }
+    @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+    @keyframes popIn { from { opacity: 0; transform: scale(0.96) translateY(8px); } to { opacity: 1; transform: scale(1) translateY(0); } }
+
+    /* SQUARE PAYMENT POPUP */
+    .donate-summary { background: rgba(13,115,119,0.07); border: 1px solid var(--teal); border-radius: 10px; padding: 0.75rem 1rem; margin-bottom: 1.2rem; font-size: 0.92rem; color: var(--navy); text-align: center; }
+    .pay-method-tabs { display: flex; gap: 0.5rem; margin-bottom: 1rem; }
+    .pay-method-tab { flex: 1; display: flex; align-items: center; justify-content: center; gap: 6px; padding: 0.6rem; border-radius: 8px; font-size: 0.82rem; font-weight: 600; cursor: pointer; background: white; color: var(--gray-600); border: 2px solid var(--gray-200); font-family: var(--font-body); }
+    .pay-method-tab.active { border-color: var(--teal); color: var(--teal); background: rgba(13,115,119,0.06); }
+    .sq-field-container { min-height: 90px; border: 1.5px solid var(--gray-200); border-radius: 8px; padding: 0.75rem; margin-bottom: 1rem; }
+    .payment-loading { font-size: 0.85rem; color: var(--gray-500); text-align: center; padding: 1.5rem 0; }
+    .payment-error { background: rgba(220,38,38,0.08); border: 1px solid #dc2626; border-radius: 8px; padding: 0.75rem 1rem; margin-bottom: 1rem; font-size: 0.85rem; color: #dc2626; }
+    .payment-notice { background: rgba(212,160,23,0.1); border: 1px solid var(--gold); border-radius: 8px; padding: 0.75rem 1rem; margin-bottom: 1.2rem; font-size: 0.8rem; color: #6b5215; line-height: 1.6; }
+    .payment-notice code { background: rgba(0,0,0,0.06); padding: 0.1rem 0.35rem; border-radius: 4px; font-size: 0.78rem; }
+    .payment-footnote { display: flex; align-items: center; gap: 8px; margin-top: 1rem; font-size: 0.78rem; color: var(--gray-600); }
+
+    /* ADMIN CONSOLE — DB table column filter popover */
+    .col-filter-popover { position: absolute; top: 100%; left: 0; z-index: 20; background: white; border: 1px solid var(--gray-200); border-radius: 8px; box-shadow: var(--shadow-md); width: 200px; margin-top: 4px; }
+
+    /* ADMIN CONSOLE */
+    .admin-hero { background: linear-gradient(135deg, var(--navy), var(--teal)); padding: 4rem 2rem; margin-top: 72px; }
+    .admin-table { width: 100%; border-collapse: collapse; font-size: 0.85rem; }
+    .admin-table th { text-align: left; padding: 0.9rem 1.2rem; background: var(--gray-100); color: var(--gray-700); font-weight: 600; font-size: 0.78rem; text-transform: uppercase; letter-spacing: 0.04em; }
+    .admin-table td { padding: 0.8rem 1.2rem; border-top: 1px solid var(--gray-100); color: var(--gray-800); }
+    .admin-status { display: inline-block; padding: 0.2rem 0.65rem; border-radius: 100px; font-size: 0.72rem; font-weight: 700; text-transform: capitalize; background: var(--gray-100); color: var(--gray-600); }
+    .admin-status-completed, .admin-status-active { background: rgba(13,115,119,0.12); color: var(--teal); }
+    .admin-status-pending, .admin-status-fundraising { background: rgba(212,160,23,0.14); color: #a16207; }
+    .admin-status-failed { background: rgba(220,38,38,0.1); color: #dc2626; }
+
     /* PAGE ANIMATION */
     .page-enter { animation: fadeUp 0.45s ease forwards; }
     @keyframes fadeUp { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }

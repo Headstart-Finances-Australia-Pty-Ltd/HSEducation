@@ -8,7 +8,7 @@ const AboutPage = ({ setPage }) => (
       <div className="page-hero-bg"><img src={IMGS.aboutMission} alt="Students with hands raised"/></div>
       <div className="page-hero-overlay"/>
       <div className="page-hero-content">
-        <div className="section-label" style={{color:'var(--gold-light)'}}>About HS Education</div>
+        <div className="section-label" style={{color:'var(--gold-light)'}}>About Headstart Education</div>
         <h1 style={{fontFamily:'var(--font-display)',fontSize:'clamp(2rem,4vw,3rem)',color:'white',marginBottom:'1rem'}}>More Than a Charity — <em style={{color:'var(--gold-light)'}}>A Movement</em></h1>
         <p style={{color:'rgba(255,255,255,0.82)',fontSize:'1.05rem',lineHeight:1.7}}>Founded on the belief that your postcode, background, or circumstances should never determine the quality of your education. Since 2012, we've been proving it.</p>
       </div>
@@ -35,9 +35,9 @@ const AboutPage = ({ setPage }) => (
           <div>
             <div className="section-label">Our Story</div>
             <h2 className="section-title">Born From <em>Lived Experience</em></h2>
-            <p style={{color:'var(--gray-600)',lineHeight:1.8,marginBottom:'1rem',fontSize:'0.95rem'}}>HS Education was co-founded in 2012 by former teacher Helen Shaw and community development leader Samuel Torres, both of whom grew up in regional Australia with limited access to educational opportunities.</p>
+            <p style={{color:'var(--gray-600)',lineHeight:1.8,marginBottom:'1rem',fontSize:'0.95rem'}}>Headstart Education was co-founded in 2012 by former teacher Helen Shaw and community development leader Samuel Torres, both of whom grew up in regional Australia with limited access to educational opportunities.</p>
             <p style={{color:'var(--gray-600)',lineHeight:1.8,marginBottom:'1rem',fontSize:'0.95rem'}}>What began as a small scholarship fund for students in regional NSW has grown into a nationally recognised charity supporting over 4,200 students each year across six states and territories.</p>
-            <p style={{color:'var(--gray-600)',lineHeight:1.8,fontSize:'0.95rem'}}>Today, HS Education works in partnership with schools, TAFEs, universities, Indigenous communities, and corporate partners to deliver meaningful, measurable outcomes for Australian learners.</p>
+            <p style={{color:'var(--gray-600)',lineHeight:1.8,fontSize:'0.95rem'}}>Today, Headstart Education works in partnership with schools, TAFEs, universities, Indigenous communities, and corporate partners to deliver meaningful, measurable outcomes for Australian learners.</p>
           </div>
           <div style={{position:'relative'}}>
             <div style={{borderRadius:'16px',overflow:'hidden',boxShadow:'var(--shadow-md)',height:'380px'}}>
@@ -56,7 +56,7 @@ const AboutPage = ({ setPage }) => (
             <div className="section-label">Our Journey</div>
             <h2 className="section-title" style={{marginBottom:'2rem'}}>How We <em>Grew</em></h2>
             <div className="timeline">
-              {[{year:'2012',title:'Founded',text:'Helen Shaw and Samuel Torres establish HS Education as an incorporated association in Sydney.'},{year:'2013',title:'First Scholarships',text:'12 scholarships distributed to Year 11 students across regional NSW.'},{year:'2015',title:'DGR Endorsement',text:'Donations become fully tax-deductible. Donor base grows by 180%.'},{year:'2017',title:'Indigenous Programs',text:'Launch culturally responsive education initiatives in partnership with NT communities.'},{year:'2020',title:'COVID-19 Response',text:'Pivot to digital literacy; provide 800 devices to disadvantaged students.'},{year:'2023',title:'National Expansion',text:'Programs active in all 6 states and Northern Territory.'},{year:'2024',title:'4,200+ Students',text:'Biggest year yet. $3.8M distributed to programs and scholarships.'}].map(({year,title,text}) => (
+              {[{year:'2012',title:'Founded',text:'Helen Shaw and Samuel Torres establish Headstart Education as an incorporated association in Sydney.'},{year:'2013',title:'First Scholarships',text:'12 scholarships distributed to Year 11 students across regional NSW.'},{year:'2015',title:'DGR Endorsement',text:'Donations become fully tax-deductible. Donor base grows by 180%.'},{year:'2017',title:'Indigenous Programs',text:'Launch culturally responsive education initiatives in partnership with NT communities.'},{year:'2020',title:'COVID-19 Response',text:'Pivot to digital literacy; provide 800 devices to disadvantaged students.'},{year:'2023',title:'National Expansion',text:'Programs active in all 6 states and Northern Territory.'},{year:'2024',title:'4,200+ Students',text:'Biggest year yet. $3.8M distributed to programs and scholarships.'}].map(({year,title,text}) => (
                 <div key={year} className="timeline-item">
                   <div className="timeline-year">{year}</div>
                   <div className="timeline-title">{title}</div>
@@ -120,10 +120,10 @@ const AboutPage = ({ setPage }) => (
         <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:'4rem',alignItems:'center'}}>
           <div>
             <div className="section-label">Get In Touch</div>
-            <h2 className="section-title">Contact <em>HS Education</em></h2>
+            <h2 className="section-title">Contact <em>Headstart Education</em></h2>
             <p className="section-desc">Whether you're a donor, school, corporate partner, or community organisation, we'd love to hear from you.</p>
             <div style={{marginTop:'2rem'}}>
-              {[{icon:'pin',label:'Registered Office',val:'Sydney, NSW 2000'},{icon:'mail',label:'General Enquiries',val:'info@hseducation.com.au'},{icon:'mail',label:'Donations & Receipts',val:'giving@hseducation.com.au'},{icon:'globe',label:'ABN',val:'12 345 678 901'}].map(({icon,label,val}) => (
+              {[{icon:'pin',label:'Registered Office',val:'Sydney, NSW 2000'},{icon:'mail',label:'General Enquiries',val:'info@hseducation.com.au'},{icon:'mail',label:'Donations & Receipts',val:'giving@hseducation.com.au'}].map(({icon,label,val}) => (
                 <div key={label} style={{display:'flex',gap:'1rem',alignItems:'flex-start',marginBottom:'1.2rem'}}>
                   <div style={{width:36,height:36,background:'rgba(13,115,119,0.1)',borderRadius:'8px',display:'flex',alignItems:'center',justifyContent:'center',flexShrink:0}}><Icon name={icon} size={18} color="var(--teal)"/></div>
                   <div><div style={{fontSize:'0.8rem',fontWeight:600,color:'var(--gray-500)',textTransform:'uppercase',letterSpacing:'0.05em'}}>{label}</div><div style={{fontSize:'0.9rem',color:'var(--gray-800)'}}>{val}</div></div>

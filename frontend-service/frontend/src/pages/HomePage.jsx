@@ -21,7 +21,7 @@ const HomePage = ({ setPage }) => (
         <div>
           <div className="hero-badge">🇦🇺 Registered Australian Charity</div>
           <h1 className="hero-title">Transforming Lives Through<br/><strong>Education & Opportunity</strong></h1>
-          <p className="hero-desc">HS Education funds scholarships, learning support programs, and community initiatives to ensure every Australian student — regardless of background — has the chance to thrive.</p>
+          <p className="hero-desc">Headstart Education funds scholarships, learning support programs, and community initiatives to ensure every Australian student — regardless of background — has the chance to thrive.</p>
           <div className="hero-actions">
             <button className="btn-primary" onClick={() => setPage('Donate')}><Icon name="heart" size={18}/> Donate Today</button>
             <button className="btn-outline" onClick={() => setPage('Projects')}>Our Programs <Icon name="arrow" size={16}/></button>
@@ -68,9 +68,9 @@ const HomePage = ({ setPage }) => (
           <div>
             <div className="section-label">Our Mission</div>
             <h2 className="section-title">Closing the Education Gap <em>Across Australia</em></h2>
-            <p className="section-desc">HS Education removes barriers preventing young Australians from accessing quality education. We work with schools, families and communities across metropolitan, regional and remote Australia.</p>
+            <p className="section-desc">Headstart Education removes barriers preventing young Australians from accessing quality education. We work with schools, families and communities across metropolitan, regional and remote Australia.</p>
             <div style={{marginTop:'2rem'}}>
-              {['DGR-endorsed — your donation is tax-deductible','Registered with the ACNC','87¢ of every dollar goes directly to programs','Transparent annual reporting to all stakeholders'].map(t => <CheckItem key={t} text={t}/>)}
+              {['Registered Australian charity','Direct procurement & delivery — no cash grants to third parties','Every project independently verified before funding begins','Transparent reporting as we grow'].map(t => <CheckItem key={t} text={t}/>)}
             </div>
             <button className="btn-primary" style={{marginTop:'1.5rem'}} onClick={() => setPage('About')}>
               Learn About Us <Icon name="arrow" size={16}/>
@@ -119,9 +119,9 @@ const HomePage = ({ setPage }) => (
         <h2 className="section-title">Lives Changed Through <em>Education</em></h2>
         <div className="cards-grid cards-3">
           {[
-            {img:IMGS.person1,quote:'"The HS Education scholarship meant I could focus on my Year 12 exams instead of worrying about rent. I\'m now studying nursing at UQ — it changed everything for me."',name:'Alysha M.',role:'Scholarship Recipient, Brisbane QLD'},
-            {img:IMGS.person2,quote:'"As a principal in regional NSW, we\'ve seen remarkable improvements in reading levels since HS Education partnered with our school for the literacy program."',name:'James T.',role:'Principal, Dubbo Central School'},
-            {img:IMGS.person3,quote:'"I never thought I\'d finish Year 12. The mentoring and support from HS Education gave me the confidence to complete school and start my apprenticeship."',name:'Dylan W.',role:'Vocational Pathway Graduate, Adelaide SA'},
+            {img:IMGS.person1,quote:'"The Headstart Education scholarship meant I could focus on my Year 12 exams instead of worrying about rent. I\'m now studying nursing at UQ — it changed everything for me."',name:'Alysha M.',role:'Scholarship Recipient, Brisbane QLD'},
+            {img:IMGS.person2,quote:'"As a principal in regional NSW, we\'ve seen remarkable improvements in reading levels since Headstart Education partnered with our school for the literacy program."',name:'James T.',role:'Principal, Dubbo Central School'},
+            {img:IMGS.person3,quote:'"I never thought I\'d finish Year 12. The mentoring and support from Headstart Education gave me the confidence to complete school and start my apprenticeship."',name:'Dylan W.',role:'Vocational Pathway Graduate, Adelaide SA'},
           ].map(({img,quote,name,role}) => (
             <div key={name} className="testi-card">
               <div className="testi-quote-mark">"</div>
@@ -146,7 +146,7 @@ const HomePage = ({ setPage }) => (
           Every Dollar Invested in Education <em style={{color:'var(--gold-light)'}}>Changes a Life</em>
         </h2>
         <p style={{color:'rgba(255,255,255,0.82)',fontSize:'1.05rem',marginBottom:'2rem',lineHeight:1.7}}>
-          Join thousands of Australians supporting HS Education. Your tax-deductible donation funds real programs for real students right across Australia.
+          Join thousands of Australians supporting Headstart Education. Your tax-deductible donation funds real programs for real students right across Australia.
         </p>
         <div style={{display:'flex',gap:'1rem',justifyContent:'center',flexWrap:'wrap'}}>
           <button className="btn-primary" onClick={() => setPage('Donate')}><Icon name="heart" size={18}/> Donate Now</button>
