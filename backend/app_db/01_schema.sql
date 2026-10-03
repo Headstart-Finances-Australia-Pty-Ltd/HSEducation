@@ -94,6 +94,45 @@ CREATE TABLE IF NOT EXISTS site_images (
 );
 
 -- ─────────────────────────────────────────────────────────
+-- TABLE: contacts
+-- Members and partners (and anyone who has unsubscribed) that the Admin
+-- Console can email. Donors are read from `donations`; a donor who
+-- unsubscribes gets a row here with type 'donor' and is_subscribed=false.
+-- ─────────────────────────────────────────────────────────
+CREATE TABLE IF NOT EXISTS contacts (
+  id            UUID         PRIMARY KEY DEFAULT uuid_generate_v4(),
+  name          VARCHAR(150) NOT NULL,
+  email         VARCHAR(255) NOT NULL,
+  organisation  VARCHAR(200),
+  type          VARCHAR(20)  NOT NULL DEFAULT 'member' CHECK (type IN ('member','partner','donor','other')),
+  notes         TEXT,
+  is_subscribed BOOLEAN      NOT NULL DEFAULT true,
+  created_at    TIMESTAMPTZ  NOT NULL DEFAULT NOW(),
+  updated_at    TIMESTAMPTZ  NOT NULL DEFAULT NOW()
+);
+CREATE UNIQUE INDEX IF NOT EXISTS contacts_email_uniq ON contacts (LOWER(email));
+
+-- ─────────────────────────────────────────────────────────
+-- TABLE: email_log
+-- One row per bulk email sent from Admin Console → Send Email.
+-- ─────────────────────────────────────────────────────────
+CREATE TABLE IF NOT EXISTS email_log (
+  id            UUID         PRIMARY KEY DEFAULT uuid_generate_v4(),
+  audience      VARCHAR(20)  NOT NULL,
+  subject       VARCHAR(300) NOT NULL,
+  body          TEXT         NOT NULL,
+  total         INTEGER      NOT NULL DEFAULT 0,
+  sent_count    INTEGER      NOT NULL DEFAULT 0,
+  failed_count  INTEGER      NOT NULL DEFAULT 0,
+  status        VARCHAR(20)  NOT NULL DEFAULT 'sending',
+  last_error    TEXT,
+  ai_drafted    BOOLEAN      NOT NULL DEFAULT false,
+  sent_by       VARCHAR(100),
+  created_at    TIMESTAMPTZ  NOT NULL DEFAULT NOW(),
+  finished_at   TIMESTAMPTZ
+);
+
+-- ─────────────────────────────────────────────────────────
 -- TABLE: admin_audit_log
 -- Records admin logins and sensitive actions for accountability.
 -- ─────────────────────────────────────────────────────────

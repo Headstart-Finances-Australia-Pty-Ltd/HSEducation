@@ -26,6 +26,9 @@ module.exports = async function ensureSchema(pool) {
   await pool.query(fs.readFileSync(schemaPath, 'utf-8'));
   console.log('✅ Database schema is up to date.');
 
+  // A restart mid-send leaves rows stuck on 'sending' — flag them honestly.
+  await pool.query("UPDATE email_log SET status='interrupted', finished_at=NOW() WHERE status='sending'");
+
   // Website photos (stored in the database) — add any that are missing.
   try {
     await require('./images').seed((sql, params) => pool.query(sql, params));

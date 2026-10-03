@@ -81,16 +81,45 @@ function fromHeader(cfg) {
 }
 
 // Throws on failure. Returns nodemailer's info object.
-async function send({ to, subject, text, html }) {
+async function send({ to, subject, text, html, headers }) {
   const cfg = await getConfig();
   if (!cfg.configured) throw new Error('Email is not configured. Add SMTP details in Admin Console → Email Settings.');
   try {
     return await transportFor(cfg).sendMail({
       from: fromHeader(cfg), to, subject, text, html,
       replyTo: cfg.replyTo || undefined,
+      headers,
     });
   } catch (err) {
     throw new Error(describeError(err));
+  }
+}
+
+// Sends many messages over one pooled connection (bulk email). Calls
+// onEach(index, error|null) after every message. Never throws per-message.
+async function sendBatch(messages, onEach, { delayMs = 150 } = {}) {
+  const cfg = await getConfig();
+  if (!cfg.configured) throw new Error('Email is not configured. Add SMTP details in Admin Console → Email Settings.');
+  if (!nodemailer) throw new Error('The "nodemailer" package is not installed on the server.');
+  const transport = nodemailer.createTransport({
+    host: cfg.host, port: cfg.port, secure: cfg.secure,
+    auth: cfg.user ? { user: cfg.user, pass: cfg.password } : undefined,
+    pool: true, maxConnections: 2, maxMessages: 100,
+    connectionTimeout: 15000, greetingTimeout: 15000, socketTimeout: 30000,
+  });
+  try {
+    for (let i = 0; i < messages.length; i++) {
+      let error = null;
+      try {
+        await transport.sendMail({ from: fromHeader(cfg), replyTo: cfg.replyTo || undefined, ...messages[i] });
+      } catch (err) {
+        error = describeError(err);
+      }
+      await onEach(i, error);
+      if (delayMs) await new Promise((r) => setTimeout(r, delayMs));
+    }
+  } finally {
+    transport.close();
   }
 }
 
@@ -137,4 +166,4 @@ async function sendDonationEmails(donation) {
   }
 }
 
-module.exports = { getConfig, send, verify, sendDonationEmails };
+module.exports = { getConfig, send, sendBatch, verify, sendDonationEmails };
