@@ -113,9 +113,25 @@ CREATE TABLE IF NOT EXISTS contacts (
 CREATE UNIQUE INDEX IF NOT EXISTS contacts_email_uniq ON contacts (LOWER(email));
 
 -- ─────────────────────────────────────────────────────────
+-- TABLE: contact_messages
+-- Messages sent from the public "Send Us a Message" form (About page).
+-- ─────────────────────────────────────────────────────────
+CREATE TABLE IF NOT EXISTS contact_messages (
+  id            UUID         PRIMARY KEY DEFAULT uuid_generate_v4(),
+  name          VARCHAR(150) NOT NULL,
+  email         VARCHAR(255) NOT NULL,
+  organisation  VARCHAR(200),
+  message       TEXT         NOT NULL,
+  email_sent    BOOLEAN      NOT NULL DEFAULT false,
+  created_at    TIMESTAMPTZ  NOT NULL DEFAULT NOW()
+);
+
+-- ─────────────────────────────────────────────────────────
 -- TABLE: email_log
 -- One row per bulk email sent from Admin Console → Send Email.
 -- ─────────────────────────────────────────────────────────
+ALTER TABLE contact_messages ADD COLUMN IF NOT EXISTS email_error TEXT;
+
 CREATE TABLE IF NOT EXISTS email_log (
   id            UUID         PRIMARY KEY DEFAULT uuid_generate_v4(),
   audience      VARCHAR(20)  NOT NULL,
