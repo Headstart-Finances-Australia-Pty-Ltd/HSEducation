@@ -11,7 +11,7 @@ const crypto  = require('crypto');
 const router  = express.Router();
 const db      = require('../db');
 const square  = require('../square');
-const { requireAdmin } = require('../lib/auth');
+const { requireAdmin, requireStaff } = require('../lib/auth');
 
 // Looks up the 'square' provider's id, creating it on first use if the
 // seed data hasn't been loaded (e.g. fresh database).
@@ -35,22 +35,23 @@ async function getSquareProviderId() {
 // Charges a tokenized card/bank nonce via the Square Payments API.
 // Returns { success, paymentId, status, error }.
 async function chargeWithSquare({ sourceId, amount, currency, email }) {
-  if (!square.isConfigured()) {
+  // Credentials come from the Admin Console (or env fallback) — see square.js.
+  const sq = await square.load();
+  if (!sq.client) {
     return { success: false, skipped: true, error: 'Square is not configured on this server.' };
   }
-  const locationId = square.locationId();
-  if (!locationId) {
-    return { success: false, skipped: true, error: 'SQUARE_LOCATION_ID is not set.' };
+  if (!sq.locationId) {
+    return { success: false, skipped: true, error: 'Square Location ID is not set.' };
   }
   try {
-    const response = await square.client.payments.create({
+    const response = await sq.client.payments.create({
       sourceId,
       idempotencyKey: crypto.randomUUID(),
       amountMoney: {
         amount: BigInt(Math.round(amount * 100)), // Square expects the smallest currency unit (cents)
         currency: currency || 'AUD',
       },
-      locationId,
+      locationId: sq.locationId,
       buyerEmailAddress: email || undefined,
     });
     // The Square SDK's response shape can vary slightly by version —
@@ -62,11 +63,7 @@ async function chargeWithSquare({ sourceId, amount, currency, email }) {
       status: (payment?.status || 'COMPLETED').toLowerCase(),
     };
   } catch (err) {
-    const message =
-      err?.errors?.map((e) => e.detail || e.code).join(' ') ||
-      err?.message ||
-      'Square payment failed.';
-    return { success: false, error: message };
+    return { success: false, error: square.describeError(err) };
   }
 }
 
@@ -128,7 +125,7 @@ router.post('/', async (req, res) => {
 });
 
 // GET /api/donations — admin only (contains donor PII)
-router.get('/', requireAdmin, async (req, res) => {
+router.get('/', requireStaff, async (req, res) => {
   try {
     if (db.isConnected()) {
       const result = await db.query(
@@ -145,7 +142,7 @@ router.get('/', requireAdmin, async (req, res) => {
 });
 
 // GET /api/donations/:id — admin only
-router.get('/:id', requireAdmin, async (req, res) => {
+router.get('/:id', requireStaff, async (req, res) => {
   try {
     if (db.isConnected()) {
       const result = await db.query('SELECT * FROM donations WHERE id=$1', [req.params.id]);

@@ -16,7 +16,8 @@ const donationsRouter   = require('./routes/donations');
 const programsRouter    = require('./routes/programs');
 const providersRouter   = require('./routes/providers');
 const { router: adminAuthRouter } = require('./routes/adminAuth');
-const adminUsersRouter  = require('./routes/adminUsers');
+const usersRouter       = require('./routes/users');
+const squareRouter      = require('./routes/squareSettings');
 const dbTablesRouter    = require('./routes/dbTables');
 const bootstrapAdmin    = require('./bootstrapAdmin');
 
@@ -45,7 +46,8 @@ app.get('/healthz', (req, res) => {
 });
 
 app.use('/api/admin-auth',  adminAuthRouter);
-app.use('/api/admin-users', adminUsersRouter);
+app.use('/api/users',       usersRouter);
+app.use('/api/square',      squareRouter);
 app.use('/api/db-tables',   dbTablesRouter);
 app.use('/api/donations',   donationsRouter);
 app.use('/api/programs',    programsRouter);
