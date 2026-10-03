@@ -142,7 +142,7 @@ const ImpactPage = () => {
                 <div style={{background:'var(--navy)',borderRadius:'16px',padding:'2rem',color:'white'}}>
                   <h4 style={{fontFamily:'var(--font-display)',marginBottom:'1rem'}}>Complaints & Feedback</h4>
                   <p style={{fontSize:'0.88rem',color:'rgba(255,255,255,0.8)',lineHeight:1.7,marginBottom:'1rem'}}>If you have a concern about Headstart Education's governance, programs or conduct:</p>
-                  {['Email: governance@hseducation.com.au','Write to the Chair at our registered office','Report to the ACNC at acnc.gov.au'].map(t => (
+                  {['Email: governance@hseducation.org','Write to the Chair at our registered office','Report to the ACNC at acnc.gov.au'].map(t => (
                     <div key={t} style={{fontSize:'0.85rem',color:'rgba(255,255,255,0.75)',marginBottom:'0.5rem',display:'flex',gap:'8px'}}><span style={{color:'var(--gold-light)'}}>→</span>{t}</div>
                   ))}
                 </div>

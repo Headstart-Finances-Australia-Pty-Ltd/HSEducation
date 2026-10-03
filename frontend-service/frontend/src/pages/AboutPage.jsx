@@ -123,7 +123,7 @@ const AboutPage = ({ setPage }) => (
             <h2 className="section-title">Contact <em>Headstart Education</em></h2>
             <p className="section-desc">Whether you're a donor, school, corporate partner, or community organisation, we'd love to hear from you.</p>
             <div style={{marginTop:'2rem'}}>
-              {[{icon:'pin',label:'Registered Office',val:'Sydney, NSW 2000'},{icon:'mail',label:'General Enquiries',val:'info@hseducation.com.au'},{icon:'mail',label:'Donations & Receipts',val:'giving@hseducation.com.au'}].map(({icon,label,val}) => (
+              {[{icon:'pin',label:'Registered Office',val:'Sydney, NSW 2000'},{icon:'mail',label:'General Enquiries',val:'info@hseducation.org'},{icon:'mail',label:'Donations & Receipts',val:'giving@hseducation.org'}].map(({icon,label,val}) => (
                 <div key={label} style={{display:'flex',gap:'1rem',alignItems:'flex-start',marginBottom:'1.2rem'}}>
                   <div style={{width:36,height:36,background:'rgba(13,115,119,0.1)',borderRadius:'8px',display:'flex',alignItems:'center',justifyContent:'center',flexShrink:0}}><Icon name={icon} size={18} color="var(--teal)"/></div>
                   <div><div style={{fontSize:'0.8rem',fontWeight:600,color:'var(--gray-500)',textTransform:'uppercase',letterSpacing:'0.05em'}}>{label}</div><div style={{fontSize:'0.9rem',color:'var(--gray-800)'}}>{val}</div></div>

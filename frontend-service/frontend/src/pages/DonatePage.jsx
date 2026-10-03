@@ -110,7 +110,7 @@ const DonatePage = () => {
                       <div><div style={{fontWeight:600,fontSize:'0.88rem',marginBottom:'0.2rem'}}>{t}</div><div style={{fontSize:'0.82rem',color:'rgba(255,255,255,0.7)',lineHeight:1.55}}>{d}</div></div>
                     </div>
                   ))}
-                  <div style={{marginTop:'1rem',paddingTop:'1rem',borderTop:'1px solid rgba(255,255,255,0.15)',fontSize:'0.82rem',color:'rgba(255,255,255,0.65)'}}>📧 partnerships@hseducation.com.au</div>
+                  <div style={{marginTop:'1rem',paddingTop:'1rem',borderTop:'1px solid rgba(255,255,255,0.15)',fontSize:'0.82rem',color:'rgba(255,255,255,0.65)'}}>📧 partnerships@hseducation.org</div>
                 </div>
               </div>
             </div>

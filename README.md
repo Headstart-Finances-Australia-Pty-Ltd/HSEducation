@@ -415,7 +415,7 @@ A session lasts **12 hours**, matching the JWT's expiry, then you'll need to log
 | Legal entity       | Headstart Education Australia Pty Ltd                |
 | ACNC Status        | Registered Australian charity                        |
 | Website            | hseducation.com.au                                   |
-| Email              | info@hseducation.com.au                              |
+| Email              | info@hseducation.org                              |
 | Address            | Sydney NSW 2000                                      |
 | Current stage      | Preparing for first project (Uttar Pradesh, India)   |
 | Founding directors | Harsh Singh (Chairman), Pramod Singh, Tavishi Makhija |
