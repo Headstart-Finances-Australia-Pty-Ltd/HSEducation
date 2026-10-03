@@ -1,7 +1,7 @@
 // ============================================================
 // Headstart Education — Square Payments Client
 // ============================================================
-// Credentials are managed in the Admin Console (Square Settings tab) and
+// Credentials are managed in the Admin Console (API Key Settings → Square) and
 // stored in the `app_settings` table (access token encrypted). If nothing
 // has been saved there, it falls back to environment variables so existing
 // deployments keep working:

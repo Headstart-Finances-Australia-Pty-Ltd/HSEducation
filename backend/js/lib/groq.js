@@ -1,6 +1,6 @@
 // ============================================================
 // Headstart Education — Groq LLM client
-// The API key and model are managed in Admin Console → Groq AI (key stored
+// The API key and model are managed in Admin Console → API Key Settings → Groq (key stored
 // encrypted in app_settings). GROQ_API_KEY / GROQ_MODEL env vars are only a
 // fallback. Read on every call, so changes apply immediately.
 // Uses the official `groq-sdk` package when installed, otherwise falls back
@@ -30,8 +30,8 @@ async function getConfig() {
 function describeError(err) {
   const status = err?.status || err?.statusCode;
   const msg = err?.error?.error?.message || err?.error?.message || err?.message || String(err);
-  if (status === 401) return 'Groq rejected the API key (401). Check it in Admin Console → Groq AI.';
-  if (status === 404) return `Groq could not find that model (${msg}). Pick another model in Admin Console → Groq AI.`;
+  if (status === 401) return 'Groq rejected the API key (401). Check it in Admin Console → API Key Settings → Groq.';
+  if (status === 404) return `Groq could not find that model (${msg}). Pick another model in Admin Console → API Key Settings → Groq.`;
   if (status === 429) return 'Groq rate limit reached (429). Wait a minute and try again.';
   if (/ENOTFOUND|ECONNREFUSED|ETIMEDOUT|fetch failed|Connection error/i.test(msg)) return 'Could not reach api.groq.com from the server (network).';
   return msg;
@@ -51,7 +51,7 @@ async function http(path, apiKey, body) {
 
 async function chat({ system, user, temperature = 0.6, maxTokens = 1000, json = false }) {
   const cfg = await getConfig();
-  if (!cfg.configured) throw new Error('Groq is not configured. Add your API key in Admin Console → Groq AI.');
+  if (!cfg.configured) throw new Error('Groq is not configured. Add your API key in Admin Console → API Key Settings → Groq.');
   const params = {
     model: cfg.model,
     temperature,
