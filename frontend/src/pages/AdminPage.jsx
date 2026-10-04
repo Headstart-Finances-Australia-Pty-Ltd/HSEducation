@@ -138,15 +138,37 @@ const DonationsTab = () => {
 };
 
 // ─── Projects tab ────────────────────────────────────────────────────────────
-const emptyProject = { name: '', category: 'Infrastructure', description: '', location: '', status: 'fundraising' };
+const emptyProject = { name: '', category: 'Infrastructure', description: '', location: '', status: 'fundraising', goal_amount: '', raised_amount: '' };
+const PROJECT_CATEGORIES = ['Infrastructure', 'Scholarships', 'Literacy', 'Vocational', 'Indigenous', 'General'];
+const PROJECT_STATUSES = ['fundraising', 'active', 'paused', 'completed'];
+const money = (v) => (Number(v) ? `$${Number(v).toLocaleString('en-AU', { maximumFractionDigits: 0 })}` : '—');
+const projectImg = (url) => (url ? (/^https?:/i.test(url) ? url : `${API_URL}${url}`) : null);
+
+// Uploads a picture into the image library and returns its address.
+async function uploadProjectImage(file, projectName) {
+  const body = await prepareImage(file);
+  const res = await fetch(`${API_URL}/api/images?label=${encodeURIComponent(`Project image — ${projectName}`.slice(0, 150))}`, {
+    method: 'POST', credentials: 'include', headers: { 'Content-Type': body.type || file.type }, body,
+  });
+  let data = null; try { data = await res.json(); } catch { /* no body */ }
+  if (res.status === 401) throw new Error('Your admin session has expired — please log in again.');
+  if (!res.ok) throw new Error(data?.message || 'Image upload failed');
+  return `/api/images/${data.key}`;
+}
 
 const ProjectsTab = ({ canEdit }) => {
   const [programs, setPrograms] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const [notice, setNotice] = useState('');
+  const [editing, setEditing] = useState(null);      // null = closed, 'new' = adding, or the project being edited
   const [form, setForm] = useState(emptyProject);
+  const [imgFile, setImgFile] = useState(null);       // newly chosen picture
+  const [imgPreview, setImgPreview] = useState(null); // preview of the newly chosen picture
+  const [removeImg, setRemoveImg] = useState(false);
   const [saving, setSaving] = useState(false);
-  const [showForm, setShowForm] = useState(false);
+  const [formError, setFormError] = useState('');
+  const [busyId, setBusyId] = useState(null);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -161,101 +183,114 @@ const ProjectsTab = ({ canEdit }) => {
   }, []);
 
   useEffect(() => { load(); }, [load]);
+  useEffect(() => () => { if (imgPreview) URL.revokeObjectURL(imgPreview); }, [imgPreview]);
 
-  const handleAdd = async (e) => {
+  const openNew = () => {
+    setForm(emptyProject); setImgFile(null); setImgPreview(null); setRemoveImg(false); setFormError(''); setEditing('new');
+  };
+  const openEdit = (p) => {
+    setForm({
+      name: p.name || '', category: p.category || 'Infrastructure', description: p.description || '', location: p.location || '',
+      status: p.status || 'fundraising', goal_amount: p.goal_amount ?? '', raised_amount: p.raised_amount ?? '',
+    });
+    setImgFile(null); setImgPreview(null); setRemoveImg(false); setFormError(''); setEditing(p);
+  };
+  const closeForm = () => { if (!saving) setEditing(null); };
+
+  const chooseImage = (e) => {
+    const f = e.target.files?.[0] || null;
+    setImgFile(f); setRemoveImg(false);
+    setImgPreview(f ? URL.createObjectURL(f) : null);
+  };
+
+  const handleSave = async (e) => {
     e.preventDefault();
-    if (!form.name) return;
-    setSaving(true);
+    if (!form.name.trim()) { setFormError('Please enter a project name.'); return; }
+    setSaving(true); setFormError('');
+    const isNew = editing === 'new';
     try {
-      await adminFetch('/api/programs', {
-        method: 'POST',
+      const payload = {
+        name: form.name.trim(), category: form.category, description: form.description, location: form.location,
+        status: form.status, goal_amount: Number(form.goal_amount) || 0,
+      };
+      if (!isNew) payload.raised_amount = Number(form.raised_amount) || 0;
+      if (imgFile) payload.image_url = await uploadProjectImage(imgFile, form.name.trim());
+      else if (!isNew && removeImg) payload.image_url = null;
+
+      await adminFetch(isNew ? '/api/programs' : `/api/programs/${editing.id}`, {
+        method: isNew ? 'POST' : 'PUT',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(form),
+        body: JSON.stringify(payload),
       });
-      setForm(emptyProject);
-      setShowForm(false);
-      load();
+      setEditing(null);
+      setNotice(isNew ? 'Project added.' : 'Project updated.');
+      await load();
     } catch (err) {
-      setError(err.message);
+      setFormError(err.message);
     } finally {
       setSaving(false);
     }
   };
 
-  const handleDelete = async (id) => {
-    if (!window.confirm('Remove this project?')) return;
+  const handleDelete = async (p) => {
+    if (!window.confirm(`Delete the project “${p.name}”${p.image_url ? ' and its picture' : ''}? This cannot be undone.`)) return;
+    setBusyId(p.id); setError(''); setNotice('');
     try {
-      await adminFetch(`/api/programs/${id}`, { method: 'DELETE' });
-      load();
+      await adminFetch(`/api/programs/${p.id}`, { method: 'DELETE' });
+      setNotice('Project deleted.');
+      await load();
     } catch (err) {
       setError(err.message);
+    } finally {
+      setBusyId(null);
     }
   };
+
+  const currentImg = editing && editing !== 'new' && !removeImg ? projectImg(editing.image_url) : null;
+  const shownImg = imgPreview || currentImg;
+  const cols = canEdit ? 7 : 6;
 
   return (
     <div>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.2rem' }}>
         <h3 style={{ fontFamily: 'var(--font-display)', color: 'var(--navy)' }}>Projects</h3>
-        {canEdit && <button className="btn-teal" onClick={() => setShowForm((s) => !s)}>{showForm ? 'Cancel' : '+ Add Project'}</button>}
+        {canEdit && <button className="btn-teal" onClick={openNew}>+ Add Project</button>}
       </div>
-
-      {canEdit && showForm && (
-        <form onSubmit={handleAdd} style={{ background: 'white', border: '1px solid var(--gray-200)', borderRadius: '16px', padding: '1.5rem', marginBottom: '1.5rem' }}>
-          <div className="form-row">
-            <div className="form-group">
-              <label className="form-label">Name *</label>
-              <input className="form-input" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} required />
-            </div>
-            <div className="form-group">
-              <label className="form-label">Category</label>
-              <select className="form-input" value={form.category} onChange={(e) => setForm({ ...form, category: e.target.value })}>
-                {['Infrastructure', 'Scholarships', 'Literacy', 'Vocational', 'Indigenous', 'General'].map((c) => <option key={c} value={c}>{c}</option>)}
-              </select>
-            </div>
-          </div>
-          <div className="form-group">
-            <label className="form-label">Location</label>
-            <input className="form-input" value={form.location} onChange={(e) => setForm({ ...form, location: e.target.value })} placeholder="e.g. Uttar Pradesh, India" />
-          </div>
-          <div className="form-group">
-            <label className="form-label">Description</label>
-            <textarea className="form-input" rows={3} value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} style={{ resize: 'vertical' }} />
-          </div>
-          <div className="form-group">
-            <label className="form-label">Status</label>
-            <select className="form-input" value={form.status} onChange={(e) => setForm({ ...form, status: e.target.value })}>
-              {['fundraising', 'active', 'paused', 'completed'].map((s) => <option key={s} value={s}>{s}</option>)}
-            </select>
-          </div>
-          <button className="donate-btn" type="submit" disabled={saving} style={{ opacity: saving ? 0.7 : 1 }}>
-            {saving ? 'Saving…' : 'Save Project'}
-          </button>
-        </form>
-      )}
 
       {loading && <p style={{ color: 'var(--gray-600)' }}>Loading projects…</p>}
       {error && <div className="payment-error">{error}</div>}
+      {notice && <div style={{ background: 'rgba(16,185,129,0.1)', border: '1px solid #10b981', color: '#065f46', borderRadius: '8px', padding: '0.7rem 1rem', marginBottom: '1rem', fontSize: '0.85rem' }}>{notice}</div>}
 
       {!loading && !error && (
-        <div style={{ background: 'white', border: '1px solid var(--gray-200)', borderRadius: '16px', overflow: 'hidden' }}>
-          <table className="admin-table">
+        <div style={{ background: 'white', border: '1px solid var(--gray-200)', borderRadius: '16px', overflowX: 'auto' }}>
+          <table className="admin-table" style={{ minWidth: 820 }}>
             <thead>
-              <tr><th>Name</th><th>Category</th><th>Location</th><th>Status</th>{canEdit && <th></th>}</tr>
+              <tr><th>Image</th><th>Name</th><th>Category</th><th>Location</th><th>Goal / Raised</th><th>Status</th>{canEdit && <th></th>}</tr>
             </thead>
             <tbody>
               {programs.length === 0 && (
-                <tr><td colSpan={canEdit ? 5 : 4} style={{ textAlign: 'center', color: 'var(--gray-500)', padding: '1.5rem' }}>No projects listed.</td></tr>
+                <tr><td colSpan={cols} style={{ textAlign: 'center', color: 'var(--gray-500)', padding: '1.5rem' }}>No projects listed.</td></tr>
               )}
               {programs.map((p) => (
                 <tr key={p.id}>
-                  <td>{p.name}</td>
-                  <td>{p.category}</td>
-                  <td>{p.location}</td>
-                  <td><span className={`admin-status admin-status-${p.status}`}>{p.status}</span></td>
+                  <td style={{ width: 90, verticalAlign: 'top' }}>
+                    {projectImg(p.image_url)
+                      ? <img src={projectImg(p.image_url)} alt={p.name} style={{ width: 72, height: 52, objectFit: 'cover', borderRadius: 8, border: '1px solid var(--gray-200)', display: 'block' }} />
+                      : <div style={{ width: 72, height: 52, borderRadius: 8, border: '1px dashed var(--gray-300)', background: 'var(--gray-100)', color: 'var(--gray-500)', fontSize: '0.68rem', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>No image</div>}
+                  </td>
+                  <td style={{ verticalAlign: 'top' }}>
+                    <div style={{ fontWeight: 600, color: 'var(--navy)' }}>{p.name}</div>
+                    {p.description && <div style={{ fontSize: '0.78rem', color: 'var(--gray-600)', maxWidth: 280, marginTop: 2 }}>{p.description.length > 90 ? `${p.description.slice(0, 90)}…` : p.description}</div>}
+                  </td>
+                  <td style={{ verticalAlign: 'top' }}>{p.category}</td>
+                  <td style={{ verticalAlign: 'top' }}>{p.location}</td>
+                  <td style={{ verticalAlign: 'top', whiteSpace: 'nowrap' }}>{money(p.goal_amount)} / {money(p.raised_amount)}</td>
+                  <td style={{ verticalAlign: 'top' }}><span className={`admin-status admin-status-${p.status}`}>{p.status}</span></td>
                   {canEdit && (
-                    <td>
-                      <button onClick={() => handleDelete(p.id)} style={{ background: 'none', border: 'none', color: '#dc2626', cursor: 'pointer', fontSize: '0.8rem', fontWeight: 600 }}>
-                        Remove
+                    <td style={{ verticalAlign: 'top', whiteSpace: 'nowrap' }}>
+                      <button onClick={() => openEdit(p)} style={{ ...linkBtn('var(--teal)'), display: 'block', marginBottom: '0.3rem' }}>Edit</button>
+                      <button onClick={() => handleDelete(p)} disabled={busyId === p.id} style={{ ...linkBtn('#dc2626'), display: 'block' }}>
+                        {busyId === p.id ? 'Deleting…' : 'Delete'}
                       </button>
                     </td>
                   )}
@@ -265,6 +300,74 @@ const ProjectsTab = ({ canEdit }) => {
           </table>
         </div>
       )}
+
+      <Modal open={!!editing} onClose={closeForm} title={editing === 'new' ? 'Add project' : 'Edit project'} width={620}>
+        {editing && (
+          <form onSubmit={handleSave}>
+            <div className="form-row">
+              <div className="form-group">
+                <label className="form-label">Name *</label>
+                <input className="form-input" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} maxLength={200} required />
+              </div>
+              <div className="form-group">
+                <label className="form-label">Category</label>
+                <select className="form-input" value={form.category} onChange={(e) => setForm({ ...form, category: e.target.value })}>
+                  {PROJECT_CATEGORIES.map((c) => <option key={c} value={c}>{c}</option>)}
+                </select>
+              </div>
+            </div>
+            <div className="form-group">
+              <label className="form-label">Location</label>
+              <input className="form-input" value={form.location} onChange={(e) => setForm({ ...form, location: e.target.value })} placeholder="e.g. Uttar Pradesh, India" maxLength={200} />
+            </div>
+            <div className="form-group">
+              <label className="form-label">Description</label>
+              <textarea className="form-input" rows={3} value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} style={{ resize: 'vertical' }} />
+            </div>
+            <div className="form-row">
+              <div className="form-group">
+                <label className="form-label">Funding goal (AUD)</label>
+                <input className="form-input" type="number" min="0" step="1" value={form.goal_amount} onChange={(e) => setForm({ ...form, goal_amount: e.target.value })} placeholder="0" />
+              </div>
+              {editing !== 'new' && (
+                <div className="form-group">
+                  <label className="form-label">Raised so far (AUD)</label>
+                  <input className="form-input" type="number" min="0" step="1" value={form.raised_amount} onChange={(e) => setForm({ ...form, raised_amount: e.target.value })} placeholder="0" />
+                </div>
+              )}
+              <div className="form-group">
+                <label className="form-label">Status</label>
+                <select className="form-input" value={form.status} onChange={(e) => setForm({ ...form, status: e.target.value })}>
+                  {PROJECT_STATUSES.map((st) => <option key={st} value={st}>{st}</option>)}
+                </select>
+              </div>
+            </div>
+
+            <div className="form-group">
+              <label className="form-label">Project image</label>
+              <div style={{ display: 'flex', gap: '1rem', alignItems: 'flex-start', flexWrap: 'wrap' }}>
+                {shownImg
+                  ? <img src={shownImg} alt="Project" style={{ width: 150, height: 100, objectFit: 'cover', borderRadius: 10, border: '1px solid var(--gray-200)' }} />
+                  : <div style={{ width: 150, height: 100, borderRadius: 10, border: '1px dashed var(--gray-300)', background: 'var(--gray-100)', color: 'var(--gray-500)', fontSize: '0.8rem', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>No image</div>}
+                <div style={{ flex: 1, minWidth: 200 }}>
+                  <input className="form-input" type="file" accept="image/jpeg,image/png,image/webp,image/gif" onChange={chooseImage} />
+                  <p style={{ fontSize: '0.78rem', color: 'var(--gray-600)', margin: '0.4rem 0 0' }}>JPG, PNG, WebP or GIF. Large photos are resized automatically.</p>
+                  {editing !== 'new' && editing.image_url && !imgFile && (
+                    <label style={{ display: 'flex', gap: '0.4rem', alignItems: 'center', fontSize: '0.82rem', color: '#b91c1c', marginTop: '0.5rem', cursor: 'pointer' }}>
+                      <input type="checkbox" checked={removeImg} onChange={(e) => setRemoveImg(e.target.checked)} /> Remove the current image
+                    </label>
+                  )}
+                </div>
+              </div>
+            </div>
+
+            {formError && <div className="payment-error" style={{ marginBottom: '0.8rem' }}>{formError}</div>}
+            <button className="donate-btn" type="submit" disabled={saving} style={{ opacity: saving ? 0.7 : 1 }}>
+              {saving ? 'Saving…' : editing === 'new' ? 'Add Project' : 'Save Changes'}
+            </button>
+          </form>
+        )}
+      </Modal>
     </div>
   );
 };
@@ -1243,8 +1346,10 @@ const ImagesTab = ({ canEdit }) => {
 
   const imgUrl = (it) => `${API_URL}/api/images/${it.key}?v=${new Date(it.updated_at).getTime()}`;
 
-  const pages = ['all', 'Home', 'About', 'Projects', 'Impact', 'Donate', 'Legal', 'unused'];
+  const pages = ['all', 'Home', 'About', 'Projects', 'Impact', 'Donate', 'Legal', 'unused', 'deleted'];
   const visible = items.filter((it) => {
+    if (pageFilter === 'deleted') return it.is_deleted;
+    if (it.is_deleted) return false;
     if (pageFilter === 'unused' && it.usage.length) return false;
     if (pageFilter !== 'all' && pageFilter !== 'unused' && !it.usage.some((u) => u.page === pageFilter)) return false;
     const q = search.trim().toLowerCase();
@@ -1308,11 +1413,25 @@ const ImagesTab = ({ canEdit }) => {
   };
 
   const deleteImage = async (it) => {
-    if (!window.confirm(`Delete “${it.label}” permanently? This cannot be undone.`)) return;
+    const where = it.usage.length ? it.usage.map((u) => `${u.page} › ${u.section}`).join('\n  • ') : '';
+    const msg = isLib(it)
+      ? `Delete “${it.label}” permanently? This cannot be undone.`
+      : `Delete “${it.label}”?\n\nIt is currently shown on:\n  • ${where || 'no page'}\n\nThose spots will be left blank on the website until you restore or replace the image. You can restore it later from the “Deleted” filter.`;
+    if (!window.confirm(msg)) return;
     setBusyKey(it.key); setError(''); setNotice('');
     try {
-      await adminFetch(`/api/images/${it.key}`, { method: 'DELETE' });
-      setNotice('Image deleted.');
+      const r = await adminFetch(`/api/images/${it.key}`, { method: 'DELETE' });
+      setNotice(r?.message || 'Image deleted.');
+      await load();
+    } catch (err) { setError(err.message); }
+    finally { setBusyKey(null); }
+  };
+
+  const restoreImage = async (it) => {
+    setBusyKey(it.key); setError(''); setNotice('');
+    try {
+      await adminFetch(`/api/images/${it.key}/restore`, { method: 'POST' });
+      setNotice(`“${it.label}” restored.`);
       await load();
     } catch (err) { setError(err.message); }
     finally { setBusyKey(null); }
@@ -1348,10 +1467,10 @@ const ImagesTab = ({ canEdit }) => {
 
       <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.75rem', marginBottom: '1rem', alignItems: 'center' }}>
         <select className="form-input" value={pageFilter} onChange={(e) => setPageFilter(e.target.value)} style={{ width: 'auto' }}>
-          {pages.map((p) => <option key={p} value={p}>{p === 'all' ? 'All pages' : p === 'unused' ? 'Spare (not shown)' : `${p} page`}</option>)}
+          {pages.map((p) => <option key={p} value={p}>{p === 'all' ? 'All pages' : p === 'unused' ? 'Spare (not shown)' : p === 'deleted' ? 'Deleted (can restore)' : `${p} page`}</option>)}
         </select>
         <input className="form-input" value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Search images, sections, purpose…" style={{ maxWidth: 320 }} />
-        <span style={small}>{visible.length} of {items.length} images</span>
+        <span style={small}>{visible.length} of {items.filter((x) => (pageFilter === 'deleted' ? x.is_deleted : !x.is_deleted)).length} images</span>
         {canEdit && <button className="btn-teal" type="button" onClick={() => { setError(''); setAdding(true); }} style={{ marginLeft: 'auto' }}>+ Add image</button>}
       </div>
 
@@ -1369,9 +1488,13 @@ const ImagesTab = ({ canEdit }) => {
               {visible.map((it) => (
                 <tr key={it.key}>
                   <td style={{ ...cell, width: 130 }}>
+                    {it.is_deleted ? (
+                      <div style={{ width: 110, height: 76, borderRadius: 8, border: '1px dashed var(--gray-300)', background: 'var(--gray-100)', color: 'var(--gray-500)', fontSize: '0.72rem', display: 'flex', alignItems: 'center', justifyContent: 'center', textAlign: 'center' }}>Deleted</div>
+                    ) : (
                     <img src={imgUrl(it)} alt={it.label} onClick={() => setPreview(it)}
                       onLoad={(e) => setDims((d) => (d[it.key] === `${e.target.naturalWidth}×${e.target.naturalHeight}` ? d : { ...d, [it.key]: `${e.target.naturalWidth}×${e.target.naturalHeight}` }))}
                       style={{ width: 110, height: 76, objectFit: 'cover', borderRadius: 8, border: '1px solid var(--gray-200)', cursor: 'zoom-in', display: 'block', opacity: busyKey === it.key ? 0.4 : 1 }} />
+                    )}
                   </td>
                   <td style={cell}>
                     <div style={{ fontWeight: 600, color: 'var(--navy)', fontSize: '0.88rem' }}>{it.label}</div>
@@ -1394,14 +1517,21 @@ const ImagesTab = ({ canEdit }) => {
                   </td>
                   {canEdit && (
                     <td style={{ ...cell, whiteSpace: 'nowrap' }}>
-                      <button className="btn-outline" type="button" onClick={() => startReplace(it)} disabled={busyKey === it.key} style={{ marginBottom: '0.4rem', display: 'block' }}>
-                        {busyKey === it.key ? 'Working…' : 'Replace'}
-                      </button>
-                      <button type="button" onClick={() => openDetails(it)} style={{ ...linkBtn('var(--teal)'), display: 'block', marginBottom: '0.3rem' }}>Edit details</button>
-                      {it.is_custom && !isLib(it) && <button type="button" onClick={() => restore(it)} style={{ ...linkBtn('#dc2626'), display: 'block' }}>Restore original</button>}
-                      {isLib(it)
-                        ? <button type="button" onClick={() => deleteImage(it)} disabled={busyKey === it.key} style={{ ...linkBtn('#dc2626'), display: 'block' }}>Delete</button>
-                        : <div style={{ ...small, color: 'var(--gray-500)', whiteSpace: 'normal', maxWidth: 150 }} title="Built-in images are placed on website pages. Use Replace to change them.">Built-in — replace, don't delete</div>}
+                      {it.is_deleted ? (
+                        <>
+                          <button className="btn-outline" type="button" onClick={() => restoreImage(it)} disabled={busyKey === it.key} style={{ marginBottom: '0.4rem', display: 'block' }}>Restore</button>
+                          <button type="button" onClick={() => startReplace(it)} style={{ ...linkBtn('var(--teal)'), display: 'block' }}>Upload new image</button>
+                        </>
+                      ) : (
+                        <>
+                          <button className="btn-outline" type="button" onClick={() => startReplace(it)} disabled={busyKey === it.key} style={{ marginBottom: '0.4rem', display: 'block' }}>
+                            {busyKey === it.key ? 'Working…' : 'Replace'}
+                          </button>
+                          <button type="button" onClick={() => openDetails(it)} style={{ ...linkBtn('var(--teal)'), display: 'block', marginBottom: '0.3rem' }}>Edit details</button>
+                          {it.is_custom && !isLib(it) && <button type="button" onClick={() => restore(it)} style={{ ...linkBtn('#b45309'), display: 'block', marginBottom: '0.3rem' }}>Restore original</button>}
+                          <button type="button" onClick={() => deleteImage(it)} disabled={busyKey === it.key} style={{ ...linkBtn('#dc2626'), display: 'block' }}>Delete</button>
+                        </>
+                      )}
                     </td>
                   )}
                 </tr>

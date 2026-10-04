@@ -12,6 +12,7 @@ import regional       from './photos/regional.jpg';
 import teamHS         from './photos/teamHS.jpg';
 import teamPS         from './photos/teamPS.jpg';
 import teamTM         from './photos/teamTM.jpg';
+import logo           from './photos/logo.png';
 
 // Bundled originals — only used as a safety net if the API can't serve an image.
 const LOCAL = {
@@ -19,6 +20,7 @@ const LOCAL = {
   aboutMission, donateHero, scholarship, literacy,
   infrastructure, regional,
   teamHS, teamPS, teamTM,
+  logo,
 };
 
 // The site's photos live in the database and are edited from Admin Console →
