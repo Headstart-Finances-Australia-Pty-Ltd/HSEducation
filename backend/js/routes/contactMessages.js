@@ -57,9 +57,9 @@ router.post('/', async (req, res) => {
     const result = await mailer.sendContactMessage(row);
     const errText = result.sent ? null : String(result.error || 'Unknown error').slice(0, 500);
     if (db.isConnected()) {
-      db.query('UPDATE contact_messages SET email_sent = $2, email_error = $3 WHERE id = $1', [row.id, !!result.sent, errText])
+      db.query('UPDATE contact_messages SET email_sent = $2, email_error = $3, email_response = $4 WHERE id = $1', [row.id, !!result.sent, errText, result.response ? String(result.response).slice(0, 500) : null])
         .catch((e) => console.warn('Could not record email result:', e.message));
-    } else { row.email_sent = !!result.sent; row.email_error = errText; }
+    } else { row.email_sent = !!result.sent; row.email_error = errText; row.email_response = result.response || null; }
     res.status(201).json({ message: 'Message sent' });
   } catch (err) {
     console.error('Contact form error:', err.message);

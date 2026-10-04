@@ -183,17 +183,29 @@ async function sendContactMessage(m) {
       console.warn('⚠️  Contact form email NOT sent:', error);
       return { sent: false, error };
     }
-    const to = cfg.adminNotify || cfg.replyTo || cfg.fromAddress || cfg.user;
-    if (!to) return { sent: false, error: 'No recipient address configured (set "admin notify" in Email settings).' };
-    await send({
+    // Only the "Notify Admin At" address is used. Falling back to the From / SMTP
+    // address would send the enquiry back to the sending mailbox, where Gmail and
+    // similar providers hide it as a duplicate of the Sent copy.
+    const to = cfg.adminNotify;
+    if (!to) {
+      const error = 'No "Notify Admin At" address is set — add it in Admin Console → API Key Settings → Email.';
+      console.warn('⚠️  Contact form email NOT sent:', error);
+      return { sent: false, error };
+    }
+    const info = await send({
       to,
       replyTo: m.email,
       subject: `Website enquiry from ${m.name}${m.organisation ? ` (${m.organisation})` : ''}`,
       text: `New message from the website contact form.\n\nName: ${m.name}\nEmail: ${m.email}\nOrganisation: ${m.organisation || '-'}\n\n${m.message}\n\n— Reply to this email to respond directly to ${m.name}.`,
       html: `<p><strong>New message from the website contact form.</strong></p><p>Name: ${esc(m.name)}<br>Email: <a href="mailto:${esc(m.email)}">${esc(m.email)}</a><br>Organisation: ${esc(m.organisation || '-')}</p><p style="white-space:pre-wrap">${esc(m.message)}</p><p style="color:#666">Reply to this email to respond directly to ${esc(m.name)}.</p>`,
     });
-    console.log(`✉️  Contact form email sent to ${to} (from visitor ${m.email})`);
-    return { sent: true, to };
+    const accepted = (info.accepted || []).map(String), rejected = (info.rejected || []).map(String);
+    const response = String(info.response || '').slice(0, 300);
+    console.log('✉️  Contact form SMTP result:', JSON.stringify({ to, visitor: m.email, messageId: info.messageId, accepted, rejected, response }));
+    if (!accepted.length || rejected.length) {
+      return { sent: false, error: `Mail server did not accept the recipient (${rejected.join(', ') || to}). ${response}`.trim(), response };
+    }
+    return { sent: true, to, response: `Accepted for ${accepted.join(', ')} — ${response}` };
   } catch (err) {
     console.warn('⚠️  Could not send contact-form email:', err.message);
     return { sent: false, error: err.message };
