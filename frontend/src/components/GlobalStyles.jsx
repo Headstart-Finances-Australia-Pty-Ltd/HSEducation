@@ -159,6 +159,20 @@ const GlobalStyles = () => (
     .hero .btn-outline, .impact-banner .btn-outline { color: #ffffff; border-color: rgba(255,255,255,0.7); }
     .hero .btn-outline:hover, .impact-banner .btn-outline:hover { background: rgba(255,255,255,0.14); border-color: #ffffff; }
 
+    /* PROJECT TILES — two across; a single (or odd last) tile is centred */
+    .project-tiles { display: flex; flex-wrap: wrap; justify-content: center; gap: 1.75rem; margin-bottom: 4rem; }
+    .project-tile { flex: 0 1 calc(50% - 0.875rem); display: flex; flex-direction: column; background: white; border: 1px solid var(--gray-200); border-radius: 16px; overflow: hidden; box-shadow: var(--shadow-sm); transition: transform 0.2s, box-shadow 0.2s; }
+    .project-tile:hover { transform: translateY(-3px); box-shadow: var(--shadow-md); }
+    .project-tile-img { position: relative; height: 230px; background: var(--gray-100); }
+    .project-tile-img img { width: 100%; height: 100%; object-fit: cover; display: block; }
+    .project-tile-status { position: absolute; top: 1rem; right: 1rem; background: rgba(212,160,23,0.95); color: white; font-size: 0.73rem; font-weight: 700; padding: 0.25rem 0.75rem; border-radius: 100px; }
+    .project-tile-body { display: flex; flex-direction: column; flex: 1; padding: 1.5rem; }
+    .project-tile-body .prog-tag { align-self: flex-start; }
+    .project-tile-title { font-family: var(--font-display); font-size: 1.25rem; color: var(--navy); margin: 0.6rem 0 0.6rem; }
+    .project-tile-loc { display: flex; align-items: center; gap: 4px; font-size: 0.78rem; color: var(--gray-500); margin-bottom: 0.75rem; }
+    .project-tile-text { font-size: 0.92rem; color: var(--gray-600); line-height: 1.7; margin: 0 0 1.2rem; }
+    @media (max-width: 760px) { .project-tile { flex-basis: 100%; } }
+
     /* IMPACT BANNER */
     .impact-banner { position: relative; overflow: hidden; padding: 6rem 2rem; }
     .impact-banner-bg { position: absolute; inset: 0; }

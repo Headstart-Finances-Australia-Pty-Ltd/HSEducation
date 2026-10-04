@@ -1,7 +1,57 @@
+import { useState, useEffect } from 'react';
 import IMGS from '../images';
 import Icon from '../components/Icon';
+import API_URL from '../config';
+
+const STATUS_LABEL = { fundraising: 'Fundraising', active: 'In Progress', paused: 'Paused', completed: 'Completed' };
+// Shown when a project has no picture of its own.
+const DEFAULT_IMG = { Infrastructure: 'infrastructure', Scholarships: 'scholarship', Literacy: 'literacy', Vocational: 'regional', Indigenous: 'communityGroup', General: 'missionKids' };
+const money = (v) => `$${Number(v || 0).toLocaleString('en-AU', { maximumFractionDigits: 0 })}`;
+const imageFor = (p) => (p.image_url ? (/^https?:/i.test(p.image_url) ? p.image_url : `${API_URL}${p.image_url}`) : IMGS[DEFAULT_IMG[p.category] || 'infrastructure']);
+
+// One project from Admin Console → Projects. Tiles sit two across; a lone tile is centred.
+const ProjectTile = ({ p, setPage }) => {
+  const goal = Number(p.goal_amount) || 0, raised = Number(p.raised_amount) || 0;
+  const pct = goal > 0 ? Math.min(100, Math.round((raised / goal) * 100)) : 0;
+  const fallback = IMGS[DEFAULT_IMG[p.category] || 'infrastructure'];
+  return (
+    <article className="project-tile">
+      <div className="project-tile-img">
+        <img src={imageFor(p)} alt={p.name} onError={(e) => { if (e.target.src !== fallback) e.target.src = fallback; }} />
+        <span className="project-tile-status">{STATUS_LABEL[p.status] || p.status}</span>
+      </div>
+      <div className="project-tile-body">
+        <span className="prog-tag">{p.category}</span>
+        <h3 className="project-tile-title">{p.name}</h3>
+        {p.location && <div className="project-tile-loc"><Icon name="pin" size={12} /> {p.location}</div>}
+        {p.description && <p className="project-tile-text">{p.description}</p>}
+        {goal > 0 && (
+          <div style={{ marginTop: '1rem' }}>
+            <div style={{ height: 8, background: 'var(--gray-100)', borderRadius: 100, overflow: 'hidden' }}>
+              <div style={{ width: `${pct}%`, height: '100%', background: 'linear-gradient(90deg, var(--teal), var(--gold))', borderRadius: 100 }} />
+            </div>
+            <div style={{ fontSize: '0.8rem', color: 'var(--gray-600)', marginTop: '0.4rem' }}>
+              <strong style={{ color: 'var(--navy)' }}>{money(raised)}</strong> raised of {money(goal)} goal
+            </div>
+          </div>
+        )}
+        <button className="btn-teal" style={{ marginTop: 'auto', alignSelf: 'flex-start' }} onClick={() => setPage('Donate')}>Support This Project</button>
+      </div>
+    </article>
+  );
+};
 
 const ProjectsPage = ({ setPage }) => {
+  const [projects, setProjects] = useState(null);       // null = loading
+  useEffect(() => {
+    let alive = true;
+    fetch(`${API_URL}/api/programs?visible=true`)
+      .then((r) => (r.ok ? r.json() : []))
+      .then((d) => { if (alive) setProjects(Array.isArray(d) ? d : []); })
+      .catch(() => { if (alive) setProjects([]); });
+    return () => { alive = false; };
+  }, []);
+
   const phases = [
     {n:'1',title:'Needs Verification',text:'Identify and assess schools in need, with on-site visits confirming educational and infrastructure gaps.'},
     {n:'2',title:'Procurement & Delivery',text:'Purchase and directly deliver classroom infrastructure and learning materials — no cash grants to third parties.'},
@@ -23,29 +73,22 @@ const ProjectsPage = ({ setPage }) => {
 
       <section className="section">
         <div className="section-inner">
-          {/* Featured project */}
-          <div className="prog-card" style={{display:'grid',gridTemplateColumns:'1fr 1.2fr',gap:0,marginBottom:'4rem',maxWidth:'none'}}>
-            <div className="prog-card-img" style={{height:'auto'}}>
-              <img src={IMGS.infrastructure} alt="Classroom infrastructure" style={{width:'100%',height:'100%',objectFit:'cover'}}/>
-              <div className="prog-card-img-overlay"/>
-              <span style={{position:'absolute',top:'1rem',right:'1rem',background:'rgba(212,160,23,0.92)',color:'white',fontSize:'0.73rem',fontWeight:700,padding:'0.25rem 0.75rem',borderRadius:'100px'}}>In Development</span>
-            </div>
-            <div className="prog-card-body" style={{padding:'2rem'}}>
-              <span className="prog-tag">Infrastructure</span>
-              <div className="prog-title" style={{fontSize:'1.3rem'}}>Rural School, Uttar Pradesh — India</div>
-              <div style={{fontSize:'0.78rem',color:'var(--gray-500)',marginBottom:'0.75rem',display:'flex',alignItems:'center',gap:'4px'}}><Icon name="pin" size={12}/> Uttar Pradesh, India (location kept confidential for now)</div>
-              <p className="prog-text" style={{fontSize:'0.92rem'}}>Our first project is currently in development. We have identified a school in a rural village in Uttar Pradesh where there is a need for additional classroom infrastructure and learning resources. We are currently completing the groundwork required to begin supporting the school.</p>
-              <div style={{marginTop:'1rem'}}>
-                <div style={{fontSize:'0.8rem',fontWeight:600,color:'var(--gray-700)',marginBottom:'0.5rem'}}>What we plan to provide:</div>
-                <div style={{display:'flex',flexWrap:'wrap',gap:'0.5rem',marginBottom:'1.2rem'}}>
-                  {['Desks & chairs','Learning materials','Books & stationery','Basic classroom equipment'].map(t => (
-                    <span key={t} style={{background:'rgba(13,115,119,0.08)',color:'var(--teal)',fontSize:'0.8rem',fontWeight:600,padding:'0.3rem 0.8rem',borderRadius:'100px'}}>{t}</span>
-                  ))}
-                </div>
-              </div>
-              <button className="btn-teal" onClick={() => setPage('Donate')}>Support This Project</button>
-            </div>
+          {/* Projects — managed in Admin Console → Projects */}
+          <div style={{textAlign:'center',marginBottom:'2rem'}}>
+            <div className="section-label">Current Projects</div>
+            <h2 className="section-title" style={{marginBottom:0}}>Where Your Support <em>Goes</em></h2>
           </div>
+          {projects === null && <p style={{textAlign:'center',color:'var(--gray-600)',marginBottom:'4rem'}}>Loading projects…</p>}
+          {projects && projects.length === 0 && (
+            <div style={{maxWidth:560,margin:'0 auto 4rem',textAlign:'center',background:'white',border:'1px solid var(--gray-200)',borderRadius:'16px',padding:'2rem'}}>
+              <p style={{color:'var(--gray-700)',lineHeight:1.7}}>Details of our first project will be published here soon. In the meantime you can <a style={{color:'var(--teal)',fontWeight:600,cursor:'pointer'}} onClick={() => setPage('Donate')}>support our work</a> or <a style={{color:'var(--teal)',fontWeight:600,cursor:'pointer'}} onClick={() => setPage('Contact')}>get in touch</a>.</p>
+            </div>
+          )}
+          {projects && projects.length > 0 && (
+            <div className="project-tiles">
+              {projects.map((p) => <ProjectTile key={p.id} p={p} setPage={setPage} />)}
+            </div>
+          )}
 
           {/* How we work */}
           <div className="section-label">How We Work</div>

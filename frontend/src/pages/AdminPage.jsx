@@ -138,7 +138,7 @@ const DonationsTab = () => {
 };
 
 // ─── Projects tab ────────────────────────────────────────────────────────────
-const emptyProject = { name: '', category: 'Infrastructure', description: '', location: '', status: 'fundraising', goal_amount: '', raised_amount: '' };
+const emptyProject = { name: '', category: 'Infrastructure', description: '', location: '', status: 'fundraising', goal_amount: '', raised_amount: '', is_visible: true };
 const PROJECT_CATEGORIES = ['Infrastructure', 'Scholarships', 'Literacy', 'Vocational', 'Indigenous', 'General'];
 const PROJECT_STATUSES = ['fundraising', 'active', 'paused', 'completed'];
 const money = (v) => (Number(v) ? `$${Number(v).toLocaleString('en-AU', { maximumFractionDigits: 0 })}` : '—');
@@ -192,6 +192,7 @@ const ProjectsTab = ({ canEdit }) => {
     setForm({
       name: p.name || '', category: p.category || 'Infrastructure', description: p.description || '', location: p.location || '',
       status: p.status || 'fundraising', goal_amount: p.goal_amount ?? '', raised_amount: p.raised_amount ?? '',
+      is_visible: p.is_visible !== false,
     });
     setImgFile(null); setImgPreview(null); setRemoveImg(false); setFormError(''); setEditing(p);
   };
@@ -211,7 +212,7 @@ const ProjectsTab = ({ canEdit }) => {
     try {
       const payload = {
         name: form.name.trim(), category: form.category, description: form.description, location: form.location,
-        status: form.status, goal_amount: Number(form.goal_amount) || 0,
+        status: form.status, goal_amount: Number(form.goal_amount) || 0, is_visible: !!form.is_visible,
       };
       if (!isNew) payload.raised_amount = Number(form.raised_amount) || 0;
       if (imgFile) payload.image_url = await uploadProjectImage(imgFile, form.name.trim());
@@ -232,6 +233,22 @@ const ProjectsTab = ({ canEdit }) => {
     }
   };
 
+  // Switch a project on/off for the public Projects page.
+  const toggleVisible = async (p) => {
+    const next = p.is_visible === false;           // currently hidden -> show
+    setError(''); setNotice('');
+    setPrograms((list) => list.map((x) => (x.id === p.id ? { ...x, is_visible: next } : x)));   // instant feedback
+    try {
+      await adminFetch(`/api/programs/${p.id}`, {
+        method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ is_visible: next }),
+      });
+      setNotice(next ? `“${p.name}” is now shown on the Projects page.` : `“${p.name}” is now hidden from the Projects page.`);
+    } catch (err) {
+      setError(err.message);
+      setPrograms((list) => list.map((x) => (x.id === p.id ? { ...x, is_visible: !next } : x)));
+    }
+  };
+
   const handleDelete = async (p) => {
     if (!window.confirm(`Delete the project “${p.name}”${p.image_url ? ' and its picture' : ''}? This cannot be undone.`)) return;
     setBusyId(p.id); setError(''); setNotice('');
@@ -248,7 +265,7 @@ const ProjectsTab = ({ canEdit }) => {
 
   const currentImg = editing && editing !== 'new' && !removeImg ? projectImg(editing.image_url) : null;
   const shownImg = imgPreview || currentImg;
-  const cols = canEdit ? 7 : 6;
+  const cols = canEdit ? 8 : 7;
 
   return (
     <div>
@@ -265,14 +282,20 @@ const ProjectsTab = ({ canEdit }) => {
         <div style={{ background: 'white', border: '1px solid var(--gray-200)', borderRadius: '16px', overflowX: 'auto' }}>
           <table className="admin-table" style={{ minWidth: 820 }}>
             <thead>
-              <tr><th>Image</th><th>Name</th><th>Category</th><th>Location</th><th>Goal / Raised</th><th>Status</th>{canEdit && <th></th>}</tr>
+              <tr><th title="Tick to show the project on the website's Projects page">Show</th><th>Image</th><th>Name</th><th>Category</th><th>Location</th><th>Goal / Raised</th><th>Status</th>{canEdit && <th></th>}</tr>
             </thead>
             <tbody>
               {programs.length === 0 && (
                 <tr><td colSpan={cols} style={{ textAlign: 'center', color: 'var(--gray-500)', padding: '1.5rem' }}>No projects listed.</td></tr>
               )}
               {programs.map((p) => (
-                <tr key={p.id}>
+                <tr key={p.id} style={{ opacity: p.is_visible === false ? 0.6 : 1 }}>
+                  <td style={{ width: 54, verticalAlign: 'top', textAlign: 'center' }}>
+                    <input type="checkbox" checked={p.is_visible !== false} disabled={!canEdit} onChange={() => toggleVisible(p)}
+                      title={p.is_visible === false ? 'Hidden — tick to show on the Projects page' : 'Shown on the Projects page — untick to hide'}
+                      style={{ width: 18, height: 18, cursor: canEdit ? 'pointer' : 'default', accentColor: 'var(--teal)' }} />
+                    {p.is_visible === false && <div style={{ fontSize: '0.65rem', color: 'var(--gray-500)', marginTop: 2 }}>Hidden</div>}
+                  </td>
                   <td style={{ width: 90, verticalAlign: 'top' }}>
                     {projectImg(p.image_url)
                       ? <img src={projectImg(p.image_url)} alt={p.name} style={{ width: 72, height: 52, objectFit: 'cover', borderRadius: 8, border: '1px solid var(--gray-200)', display: 'block' }} />
@@ -343,6 +366,11 @@ const ProjectsTab = ({ canEdit }) => {
               </div>
             </div>
 
+            <label style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', fontSize: '0.9rem', cursor: 'pointer', marginBottom: '1.2rem' }}>
+              <input type="checkbox" checked={!!form.is_visible} onChange={(e) => setForm({ ...form, is_visible: e.target.checked })} style={{ width: 18, height: 18, accentColor: 'var(--teal)' }} />
+              Show this project on the website's Projects page
+            </label>
+
             <div className="form-group">
               <label className="form-label">Project image</label>
               <div style={{ display: 'flex', gap: '1rem', alignItems: 'flex-start', flexWrap: 'wrap' }}>
@@ -384,6 +412,7 @@ const ROLE_INFO = {
 
 const emptyUser = { username: '', name: '', email: '', role: 'viewer', password: '', is_active: true };
 
+const rowBtn = (color) => ({ background: 'white', border: `1.5px solid ${color}`, color, borderRadius: 8, padding: '0.3rem 0.8rem', fontSize: '0.8rem', fontWeight: 600, cursor: 'pointer' });
 const linkBtn = (color) => ({ background: 'none', border: 'none', color, cursor: 'pointer', fontSize: '0.8rem', fontWeight: 600 });
 
 const UsersTab = ({ currentUsername }) => {
@@ -459,11 +488,11 @@ const UsersTab = ({ currentUsername }) => {
   };
 
   const handleDelete = async (u) => {
-    if (!window.confirm(`Remove ${u.username}? They will no longer be able to log in. This can't be undone.`)) return;
+    if (!window.confirm(`Delete the user “${u.username}”? They will no longer be able to log in. This can't be undone.`)) return;
     setError(''); setNotice('');
     try {
       await adminFetch(`/api/users/${u.id}`, { method: 'DELETE' });
-      setNotice(`Removed ${u.username}.`);
+      setNotice(`Deleted ${u.username}.`);
       load();
     } catch (err) {
       setError(err.message);
@@ -476,14 +505,11 @@ const UsersTab = ({ currentUsername }) => {
     <div>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.2rem' }}>
         <h3 style={{ fontFamily: 'var(--font-display)', color: 'var(--navy)' }}>Users</h3>
-        <button className="btn-teal" onClick={showForm ? closeForm : openCreate}>{showForm ? 'Cancel' : '+ Add User'}</button>
+        <button className="btn-teal" onClick={openCreate}>+ Add User</button>
       </div>
 
-      {showForm && (
-        <form onSubmit={handleSave} style={{ ...card, padding: '1.5rem', marginBottom: '1.5rem' }}>
-          <h4 style={{ fontFamily: 'var(--font-display)', color: 'var(--navy)', marginBottom: '1rem' }}>
-            {editingId ? `Edit ${form.username}` : 'New user'}
-          </h4>
+      <Modal open={showForm} onClose={closeForm} title={editingId ? `Edit user — ${form.username}` : 'Add user'} width={660}>
+        <form onSubmit={handleSave}>
           <div className="form-row">
             <div className="form-group">
               <label className="form-label">Username *</label>
@@ -526,7 +552,7 @@ const UsersTab = ({ currentUsername }) => {
             {saving ? 'Saving…' : (editingId ? 'Save Changes' : 'Create User')}
           </button>
         </form>
-      )}
+      </Modal>
 
       {!showForm && error && <div className="payment-error">{error}</div>}
       {notice && <div style={{ background: 'rgba(16,185,129,0.1)', border: '1px solid #10b981', color: '#065f46', borderRadius: '8px', padding: '0.7rem 1rem', marginBottom: '1rem', fontSize: '0.85rem' }}>{notice}</div>}
@@ -555,14 +581,12 @@ const UsersTab = ({ currentUsername }) => {
                     </td>
                     <td>{u.last_login_at ? new Date(u.last_login_at).toLocaleString() : 'Never'}</td>
                     <td style={{ whiteSpace: 'nowrap' }}>
-                      <div style={{ display: 'flex', gap: '0.8rem' }}>
-                        <button onClick={() => openEdit(u)} style={linkBtn('var(--teal)')}>Edit</button>
-                        {!isSelf && (
-                          <>
-                            <button onClick={() => toggleActive(u)} style={linkBtn('var(--gray-700)')}>{u.is_active ? 'Disable' : 'Enable'}</button>
-                            <button onClick={() => handleDelete(u)} style={linkBtn('#dc2626')}>Remove</button>
-                          </>
-                        )}
+                      <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
+                        <button onClick={() => openEdit(u)} style={rowBtn('var(--teal)')}>Edit</button>
+                        {!isSelf && <button onClick={() => toggleActive(u)} style={rowBtn('var(--gray-700)')}>{u.is_active ? 'Disable' : 'Enable'}</button>}
+                        <button onClick={() => handleDelete(u)} disabled={isSelf}
+                          title={isSelf ? "You can't delete the account you are logged in with" : `Delete ${u.username}`}
+                          style={{ ...rowBtn('#dc2626'), ...(isSelf ? { opacity: 0.4, cursor: 'not-allowed' } : {}) }}>Delete</button>
                       </div>
                     </td>
                   </tr>
@@ -1344,7 +1368,7 @@ const ImagesTab = ({ canEdit }) => {
   }, []);
   useEffect(() => { load(); }, [load]);
 
-  const imgUrl = (it) => `${API_URL}/api/images/${it.key}?v=${new Date(it.updated_at).getTime()}`;
+  const imgUrl = (it) => `${API_URL}/api/images/${it.key}?v=${new Date(it.updated_at).getTime()}${it.is_hidden ? '&preview=1' : ''}`;
 
   const pages = ['all', 'Home', 'About', 'Projects', 'Impact', 'Donate', 'Legal', 'unused', 'deleted'];
   const visible = items.filter((it) => {
@@ -1427,6 +1451,22 @@ const ImagesTab = ({ canEdit }) => {
     finally { setBusyKey(null); }
   };
 
+  // Switch an image on/off on the website without deleting it.
+  const toggleShown = async (it) => {
+    const show = !!it.is_hidden;                      // currently hidden -> show
+    setError(''); setNotice('');
+    setItems((list) => list.map((x) => (x.key === it.key ? { ...x, is_hidden: !show } : x)));   // instant feedback
+    try {
+      await adminFetch(`/api/images/${it.key}/visibility`, {
+        method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ visible: show }),
+      });
+      setNotice(show ? `“${it.label}” is now shown on the website.` : `“${it.label}” is now hidden — its spot is blank on the website.`);
+    } catch (err) {
+      setError(err.message);
+      setItems((list) => list.map((x) => (x.key === it.key ? { ...x, is_hidden: show } : x)));
+    }
+  };
+
   const restoreImage = async (it) => {
     setBusyKey(it.key); setError(''); setNotice('');
     try {
@@ -1482,11 +1522,17 @@ const ImagesTab = ({ canEdit }) => {
         <div style={{ background: 'white', border: '1px solid var(--gray-200)', borderRadius: '16px', overflowX: 'auto' }}>
           <table className="admin-table" style={{ minWidth: 860 }}>
             <thead>
-              <tr><th>Image</th><th>Where it's used</th><th>Purpose</th><th>File</th>{canEdit && <th></th>}</tr>
+              <tr><th title="Tick to show the image on the website">Show</th><th>Image</th><th>Where it's used</th><th>Purpose</th><th>File</th>{canEdit && <th></th>}</tr>
             </thead>
             <tbody>
               {visible.map((it) => (
-                <tr key={it.key}>
+                <tr key={it.key} style={{ opacity: it.is_hidden || it.is_deleted ? 0.65 : 1 }}>
+                  <td style={{ ...cell, width: 54, textAlign: 'center' }}>
+                    <input type="checkbox" checked={!it.is_hidden && !it.is_deleted} disabled={!canEdit || it.is_deleted} onChange={() => toggleShown(it)}
+                      title={it.is_deleted ? 'Deleted — restore it first' : it.is_hidden ? 'Hidden — tick to show on the website' : 'Shown on the website — untick to hide'}
+                      style={{ width: 18, height: 18, cursor: canEdit && !it.is_deleted ? 'pointer' : 'default', accentColor: 'var(--teal)' }} />
+                    {it.is_hidden && !it.is_deleted && <div style={{ fontSize: '0.65rem', color: 'var(--gray-500)', marginTop: 2 }}>Hidden</div>}
+                  </td>
                   <td style={{ ...cell, width: 130 }}>
                     {it.is_deleted ? (
                       <div style={{ width: 110, height: 76, borderRadius: 8, border: '1px dashed var(--gray-300)', background: 'var(--gray-100)', color: 'var(--gray-500)', fontSize: '0.72rem', display: 'flex', alignItems: 'center', justifyContent: 'center', textAlign: 'center' }}>Deleted</div>
@@ -1536,7 +1582,7 @@ const ImagesTab = ({ canEdit }) => {
                   )}
                 </tr>
               ))}
-              {visible.length === 0 && <tr><td colSpan={canEdit ? 5 : 4} style={{ textAlign: 'center', color: 'var(--gray-500)', padding: '2rem' }}>No images match.</td></tr>}
+              {visible.length === 0 && <tr><td colSpan={canEdit ? 6 : 5} style={{ textAlign: 'center', color: 'var(--gray-500)', padding: '2rem' }}>No images match.</td></tr>}
             </tbody>
           </table>
         </div>
