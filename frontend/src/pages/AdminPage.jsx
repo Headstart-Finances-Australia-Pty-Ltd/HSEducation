@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback, useRef } from 'react';
 import Icon from '../components/Icon';
 import Modal from '../components/Modal';
 import API_URL from '../config';
+import { makeLogoTransparent } from '../lib/imageTools';
 
 // Wraps fetch with credentials:'include' (so the httpOnly admin session
 // cookie is sent/received) and treats a 401 as "please log in again"
@@ -1306,6 +1307,8 @@ const EmailSettingsTab = () => {
 // ─── Images ──────────────────────────────────────────────────────────────────
 // Every photo on the website is stored in the database. Each row says where
 // the image appears and what it is for; "Replace" swaps it everywhere at once.
+// Checkerboard behind PNG images so a transparent background is visible as such.
+const checker = { backgroundColor: '#fff', backgroundImage: 'linear-gradient(45deg,#e5e7eb 25%,transparent 25%,transparent 75%,#e5e7eb 75%),linear-gradient(45deg,#e5e7eb 25%,transparent 25%,transparent 75%,#e5e7eb 75%)', backgroundSize: '12px 12px', backgroundPosition: '0 0,6px 6px' };
 const fmtBytes = (n) => (n >= 1048576 ? `${(n / 1048576).toFixed(1)} MB` : `${Math.max(1, Math.round(n / 1024))} KB`);
 const MAX_UPLOAD = 6 * 1024 * 1024;
 
@@ -1330,9 +1333,12 @@ async function prepareImage(file) {
     canvas.width = Math.round(img.naturalWidth * scale);
     canvas.height = Math.round(img.naturalHeight * scale);
     const ctx = canvas.getContext('2d');
-    ctx.fillStyle = '#fff'; ctx.fillRect(0, 0, canvas.width, canvas.height);
+    // PNG / WebP may have a transparent background (logos, cut-outs): keep it, as a PNG.
+    // Photos (JPEG) have no transparency, so they are flattened to a smaller JPEG.
+    const keepAlpha = file.type === 'image/png' || file.type === 'image/webp';
+    if (!keepAlpha) { ctx.fillStyle = '#fff'; ctx.fillRect(0, 0, canvas.width, canvas.height); }
     ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
-    const blob = await new Promise((r) => canvas.toBlob(r, 'image/jpeg', 0.86));
+    const blob = await new Promise((r) => (keepAlpha ? canvas.toBlob(r, 'image/png') : canvas.toBlob(r, 'image/jpeg', 0.86)));
     if (!blob) throw new Error('Could not process that image.');
     if (blob.size > MAX_UPLOAD) throw new Error('That image is still over 6 MB after resizing — choose a smaller one.');
     return blob;
@@ -1389,14 +1395,17 @@ const ImagesTab = ({ canEdit }) => {
     if (!file || !key) return;
     setBusyKey(key); setError(''); setNotice('');
     try {
-      const body = await prepareImage(file);
+      const isLogoSlot = key === 'logo';
+      const body = isLogoSlot ? await makeLogoTransparent(file) : await prepareImage(file);
       const res = await fetch(`${API_URL}/api/images/${key}`, {
         method: 'PUT', credentials: 'include', headers: { 'Content-Type': body.type || file.type }, body,
       });
       let data = null; try { data = await res.json(); } catch { /* no body */ }
       if (res.status === 401) throw new Error('Your admin session has expired — please log in again.');
       if (!res.ok) throw new Error(data?.message || 'Upload failed');
-      setNotice('Image replaced. It now shows everywhere it is used on the website.');
+      setNotice(isLogoSlot
+        ? 'Logo replaced — any solid white background was removed automatically, so it is transparent. It now shows in the header and footer.'
+        : 'Image replaced. It now shows everywhere it is used on the website.');
       await load();
     } catch (err) {
       setError(err.message);
@@ -1539,7 +1548,7 @@ const ImagesTab = ({ canEdit }) => {
                     ) : (
                     <img src={imgUrl(it)} alt={it.label} onClick={() => setPreview(it)}
                       onLoad={(e) => setDims((d) => (d[it.key] === `${e.target.naturalWidth}×${e.target.naturalHeight}` ? d : { ...d, [it.key]: `${e.target.naturalWidth}×${e.target.naturalHeight}` }))}
-                      style={{ width: 110, height: 76, objectFit: 'cover', borderRadius: 8, border: '1px solid var(--gray-200)', cursor: 'zoom-in', display: 'block', opacity: busyKey === it.key ? 0.4 : 1 }} />
+                      style={{ width: 110, height: 76, objectFit: it.mime_type === 'image/png' ? 'contain' : 'cover', ...(it.mime_type === 'image/png' ? checker : {}), borderRadius: 8, border: '1px solid var(--gray-200)', cursor: 'zoom-in', display: 'block', opacity: busyKey === it.key ? 0.4 : 1 }} />
                     )}
                   </td>
                   <td style={cell}>
@@ -1591,7 +1600,7 @@ const ImagesTab = ({ canEdit }) => {
       <Modal open={!!preview} onClose={() => setPreview(null)} title={preview?.label || ''} width={760}>
         {preview && (
           <div>
-            <img src={imgUrl(preview)} alt={preview.label} style={{ width: '100%', maxHeight: '55vh', objectFit: 'contain', borderRadius: 8, background: 'var(--gray-100)' }} />
+            <img src={imgUrl(preview)} alt={preview.label} style={{ width: '100%', maxHeight: '55vh', objectFit: 'contain', borderRadius: 8, ...(preview.mime_type === 'image/png' ? checker : { background: 'var(--gray-100)' }) }} />
             <p style={{ ...small, marginTop: '0.8rem' }}>{preview.purpose}</p>
           </div>
         )}
