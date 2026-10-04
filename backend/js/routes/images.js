@@ -6,13 +6,18 @@
 // PATCH /api/images/:key        — edit name / purpose          (editor+)
 // POST  /api/images/:key/reset  — restore the original photo   (editor+)
 // POST  /api/images?label=Name  — add a new library image     (editor+)
-// DELETE /api/images/:key       — delete a library image       (editor+)
+// DELETE /api/images/:key       — delete an image              (editor+)
+// POST  /api/images/:key/restore — bring a deleted image back  (editor+)
 // ============================================================
 const express = require('express');
 const router  = express.Router();
 const images  = require('../lib/images');
 const { requireStaff, requireEditor } = require('../lib/auth');
 const { logAudit } = require('./adminAuth');
+
+// 1×1 transparent GIF — what the website receives for a deleted image, so the
+// spot stays blank (no broken-image icon and no fallback to the bundled photo).
+const BLANK_GIF = Buffer.from('R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7', 'base64');
 
 const rawImage = express.raw({ type: images.ALLOWED, limit: images.MAX_BYTES });
 
@@ -24,9 +29,10 @@ router.get('/:key', async (req, res, next) => {
   try {
     const head = await images.head(req.params.key);
     if (!head) return res.status(404).end();
-    const etag = `"${head.key}-${new Date(head.updated_at).getTime()}-${head.size_bytes}"`;
+    const etag = `"${head.key}-${new Date(head.updated_at).getTime()}-${head.size_bytes}${head.is_deleted ? '-deleted' : ''}"`;
     res.set({ ETag: etag, 'Cache-Control': 'public, no-cache', 'X-Content-Type-Options': 'nosniff' });
     if (req.headers['if-none-match'] === etag) return res.status(304).end();
+    if (head.is_deleted) return res.set('X-Image-Deleted', '1').type('image/gif').send(BLANK_GIF);
     const row = await images.getData(req.params.key);
     if (!row) return res.status(404).end();
     res.type(row.mime_type).send(row.data);
@@ -114,11 +120,21 @@ router.post('/', requireEditor, rawImage, async (req, res) => {
   }
 });
 
+router.post('/:key/restore', requireEditor, async (req, res) => {
+  try {
+    await images.restore(req.params.key, req.admin.username);
+    await logAudit(req.admin, 'image.restore', req.params.key);
+    res.json({ message: 'Image restored' });
+  } catch (err) {
+    res.status(err.status || 500).json({ message: err.message });
+  }
+});
+
 router.delete('/:key', requireEditor, async (req, res) => {
   try {
-    await images.remove(req.params.key);
-    await logAudit(req.admin, 'image.delete', req.params.key);
-    res.json({ message: 'Image deleted' });
+    const how = await images.remove(req.params.key, req.admin.username);
+    await logAudit(req.admin, 'image.delete', `${req.params.key} (${how})`);
+    res.json({ message: how === 'hidden' ? 'Image deleted. Its spot on the website is now blank — use Restore to bring it back.' : 'Image deleted' });
   } catch (err) {
     res.status(err.status || 500).json({ message: err.message });
   }

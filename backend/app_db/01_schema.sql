@@ -93,6 +93,9 @@ CREATE TABLE IF NOT EXISTS site_images (
   updated_at  TIMESTAMPTZ  NOT NULL DEFAULT NOW()
 );
 
+-- Deleted built-in images are hidden (not erased) so they can be restored.
+ALTER TABLE site_images ADD COLUMN IF NOT EXISTS is_deleted BOOLEAN NOT NULL DEFAULT false;
+
 -- ─────────────────────────────────────────────────────────
 -- TABLE: contacts
 -- Members and partners (and anyone who has unsubscribed) that the Admin

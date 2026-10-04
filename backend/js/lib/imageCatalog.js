@@ -10,6 +10,11 @@ const CARD = 'Landscape (about 3:2), at least 1000×700 px';
 const PORTRAIT = 'Portrait or square, at least 600×800 px';
 
 module.exports = [
+  { key: 'logo', file: 'logo.png', label: 'Website logo', recommended: 'Square PNG with transparent corners, 256×256 px or larger',
+    purpose: 'The Headstart Education logo shown at the top-left of every page and in the footer. Replace it to change the logo everywhere.',
+    usage: [
+      { page: 'All pages', section: 'Navigation bar (top-left)', note: 'Next to the "Headstart Education" name' },
+      { page: 'All pages', section: 'Footer', note: 'Small logo above the footer text' } ] },
   { key: 'literacy', label: 'Child learning to read', recommended: CARD,
     purpose: 'Shows the learning-materials side of our work; reused wherever literacy / values are described.',
     usage: [
@@ -66,4 +71,4 @@ module.exports = [
     usage: [{ page: 'About', section: 'Leadership Team', note: 'Round photo on the TM card' }] },
 
   { key: 'regional', label: 'Learning materials (books)', recommended: HERO, purpose: 'Stack of books representing the learning materials we supply; sits behind the closing donate message.', usage: [{ page: 'Home', section: 'Bottom call-to-action banner', note: 'Background behind the closing donate message' }] },
-].map((e) => ({ ...e, file: `${e.key}.jpg` }));
+].map((e) => ({ ...e, file: e.file || `${e.key}.jpg` }));
