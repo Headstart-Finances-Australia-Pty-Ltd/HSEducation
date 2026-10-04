@@ -131,6 +131,7 @@ CREATE TABLE IF NOT EXISTS contact_messages (
 -- One row per bulk email sent from Admin Console → Send Email.
 -- ─────────────────────────────────────────────────────────
 ALTER TABLE contact_messages ADD COLUMN IF NOT EXISTS email_error TEXT;
+ALTER TABLE contact_messages ADD COLUMN IF NOT EXISTS email_response TEXT;
 
 CREATE TABLE IF NOT EXISTS email_log (
   id            UUID         PRIMARY KEY DEFAULT uuid_generate_v4(),
