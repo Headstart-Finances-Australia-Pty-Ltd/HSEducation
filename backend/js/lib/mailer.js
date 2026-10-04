@@ -34,8 +34,12 @@ async function getConfig() {
   return {
     host: host.value || '',
     port: portNum,
-    // Port 465 = implicit TLS; 587/25 = STARTTLS (handled automatically).
-    secure: secure.value !== null ? String(secure.value) === 'true' : portNum === 465,
+    // Port 465 = implicit TLS; 587/25/2525 = STARTTLS (upgraded automatically).
+    // The port decides, so a mismatched SSL/TLS toggle can't cause the
+    // "wrong version number" error. Only an unusual port honours the toggle.
+    secure: portNum === 465 ? true
+      : [587, 25, 2525].includes(portNum) ? false
+      : (secure.value !== null ? String(secure.value) === 'true' : false),
     user: user.value || '',
     password: password.value || '',
     fromName: fromName.value || 'Headstart Education',
@@ -69,6 +73,7 @@ function transportFor(cfg) {
 
 function describeError(err) {
   const msg = err && err.message ? err.message : String(err);
+  if (/wrong version number|ssl3_get_record/i.test(msg)) return `SSL/TLS setting does not match the port. Use port 465 with SSL on, or port 587 with SSL off.`;
   if (/EAUTH|Invalid login|authentication/i.test(msg)) return `Login rejected by the mail server (${msg}). Check username/password — Gmail/Outlook need an app password.`;
   if (/ENOTFOUND|EAI_AGAIN/i.test(msg)) return `Could not find the mail server host (${msg}).`;
   if (/ECONNREFUSED|ETIMEDOUT|ESOCKET|timeout/i.test(msg)) return `Could not reach the mail server (${msg}). Check host, port and the SSL/TLS setting.`;

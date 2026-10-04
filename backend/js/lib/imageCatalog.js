@@ -10,8 +10,6 @@ const CARD = 'Landscape (about 3:2), at least 1000×700 px';
 const PORTRAIT = 'Portrait or square, at least 600×800 px';
 
 module.exports = [
-  { key: 'heroStudents', label: 'Spare — Empty classroom', recommended: HERO,
-    purpose: 'Spare wide classroom photo (the same scene now used for Classroom infrastructure). Not currently shown on the site.', usage: [] },
   { key: 'literacy', label: 'Child learning to read', recommended: CARD,
     purpose: 'Shows the learning-materials side of our work; reused wherever literacy / values are described.',
     usage: [
@@ -67,17 +65,5 @@ module.exports = [
     purpose: 'Round profile photo for Tavishi Makhija in the Leadership Team. Replace the initials placeholder with a real photo.',
     usage: [{ page: 'About', section: 'Leadership Team', note: 'Round photo on the TM card' }] },
 
-  // Spare images: bundled with the site but not currently placed on any page.
-  { key: 'indigenous', label: 'Spare — Indigenous education', recommended: CARD, purpose: 'Spare photo for a future Indigenous education program. Not currently shown on the site.', usage: [] },
-  { key: 'vocational', label: 'Spare — Vocational training', recommended: CARD, purpose: 'Spare photo for a future vocational training program. Not currently shown on the site.', usage: [] },
-  { key: 'mathsProgram', label: 'Spare — Maths program', recommended: CARD, purpose: 'Spare photo for a future maths program. Not currently shown on the site.', usage: [] },
   { key: 'regional', label: 'Learning materials (books)', recommended: HERO, purpose: 'Stack of books representing the learning materials we supply; sits behind the closing donate message.', usage: [{ page: 'Home', section: 'Bottom call-to-action banner', note: 'Background behind the closing donate message' }] },
-  { key: 'twoWay', label: 'Spare — Two-way learning', recommended: CARD, purpose: 'Spare photo for a future two-way learning program. Not currently shown on the site.', usage: [] },
-  { key: 'pathways', label: 'Spare — Education pathways', recommended: CARD, purpose: 'Spare photo for a future pathways program. Not currently shown on the site.', usage: [] },
-  ...['person1', 'person2', 'person3'].map((key, i) => ({
-    key, label: `Spare — Portrait ${i + 1}`, recommended: PORTRAIT,
-    purpose: 'Spare portrait, e.g. for a testimonial or profile. Not currently shown on the site.', usage: [] })),
-  ...[1, 2, 3, 4, 5, 6, 7, 8].map((n) => ({
-    key: `team${n}`, label: `Spare — Team photo ${n}`, recommended: PORTRAIT,
-    purpose: 'Spare team photo (the About page currently shows initials instead). Not currently shown on the site.', usage: [] })),
 ].map((e) => ({ ...e, file: `${e.key}.jpg` }));

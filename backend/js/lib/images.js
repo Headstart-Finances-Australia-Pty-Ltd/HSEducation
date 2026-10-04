@@ -13,6 +13,9 @@ const catalog = require('./imageCatalog');
 const ALLOWED = ['image/jpeg', 'image/png', 'image/webp', 'image/gif'];
 const MAX_BYTES = 6 * 1024 * 1024;
 const byKey = Object.fromEntries(catalog.map((c) => [c.key, c]));
+// Images uploaded from Admin Console → Images → "Add image" (not tied to a page slot).
+const isLibrary = (key) => /^lib_[a-f0-9]{10}$/.test(String(key || ''));
+const crypto = require('crypto');
 
 function seedDir() {
   return [path.join(__dirname, '..', 'seed-images'), path.join(__dirname, '..', '..', 'seed-images')]
@@ -70,14 +73,20 @@ async function seed(query) {
     );
     added++;
   }
+  // Drop retired originals (e.g. old spare photos) that are no longer in the catalog.
+  // Photos uploaded from the Admin Console (is_custom) are never deleted.
+  const known = catalog.map((c) => c.key);
+  const gone = await query('DELETE FROM site_images WHERE is_custom = false AND NOT (key = ANY($1::text[]))', [known]);
+  if (gone && gone.rowCount) console.log(`🖼️  Removed ${gone.rowCount} unused site image(s) from the database.`);
   if (added) console.log(`🖼️  Seeded ${added} site image(s) into the database.`);
   if (refreshed) console.log(`🖼️  Refreshed ${refreshed} original site image(s) with the updated versions.`);
 }
 
 // ── In-memory helpers (no database) ────────────────────────
 function memRow(key) {
-  if (!byKey[key]) return null;
   if (!db.mem.images) db.mem.images = {};
+  if (isLibrary(key)) return db.mem.images[key] || null;
+  if (!byKey[key]) return null;
   if (!db.mem.images[key]) {
     const buf = readSeed(key);
     if (!buf) return null;
@@ -109,14 +118,17 @@ async function list() {
       'SELECT key,label,purpose,mime_type,size_bytes,is_custom,updated_by,updated_at FROM site_images'
     );
     const order = Object.fromEntries(catalog.map((c, i) => [c.key, i]));
-    return rows.filter((r) => byKey[r.key]).sort((a, b) => order[a.key] - order[b.key]).map(withCatalog);
+    const built = rows.filter((r) => byKey[r.key]).sort((a, b) => order[a.key] - order[b.key]);
+    const lib = rows.filter((r) => isLibrary(r.key)).sort((a, b) => new Date(b.updated_at) - new Date(a.updated_at));
+    return [...built, ...lib].map(withCatalog);
   }
-  return catalog.map((c) => memRow(c.key)).filter(Boolean).map(withCatalog);
+  const lib = Object.values(db.mem.images || {}).filter((r) => isLibrary(r.key)).sort((a, b) => b.updated_at - a.updated_at);
+  return [...catalog.map((c) => memRow(c.key)).filter(Boolean), ...lib].map(withCatalog);
 }
 
 // Lightweight row (no bytes) — used for ETag checks.
 async function head(key) {
-  if (!byKey[key]) return null;
+  if (!byKey[key] && !isLibrary(key)) return null;
   if (db.isConnected()) {
     const { rows } = await db.query('SELECT key,mime_type,size_bytes,updated_at FROM site_images WHERE key=$1', [key]);
     if (rows[0]) return rows[0];
@@ -167,4 +179,37 @@ async function reset(key, by) {
   }
 }
 
-module.exports = { ALLOWED, MAX_BYTES, catalog, byKey, sniffMime, seed, list, head, getData, replace, updateDetails, reset };
+// Adds a new library image (not tied to a page slot). Returns its key.
+async function create(buf, mime, label, by) {
+  const key = `lib_${crypto.randomBytes(5).toString('hex')}`;
+  const name = String(label || '').trim().slice(0, 150) || 'Untitled image';
+  const purpose = 'Library image — not placed on any page yet.';
+  if (db.isConnected()) {
+    await db.query(
+      `INSERT INTO site_images (key, label, purpose, mime_type, data, size_bytes, is_custom, updated_by)
+       VALUES ($1,$2,$3,$4,$5,$6,true,$7)`, [key, name, purpose, mime, buf, buf.length, by]);
+  } else {
+    if (!db.mem.images) db.mem.images = {};
+    db.mem.images[key] = { key, label: name, purpose, mime_type: mime, data: buf, size_bytes: buf.length,
+      is_custom: true, updated_by: by, updated_at: new Date() };
+  }
+  return key;
+}
+
+// Deletes a library image. Built-in images belong to page slots and can't be deleted.
+async function remove(key) {
+  if (!isLibrary(key)) {
+    const e = new Error(byKey[key]
+      ? 'This is a built-in website image — it is placed on a page, so it cannot be deleted. Use Replace to change it, or Restore original.'
+      : 'Unknown image');
+    e.status = byKey[key] ? 400 : 404; throw e;
+  }
+  if (db.isConnected()) {
+    const { rowCount } = await db.query('DELETE FROM site_images WHERE key = $1', [key]);
+    if (!rowCount) { const e = new Error('Image not found'); e.status = 404; throw e; }
+  } else if (db.mem.images && db.mem.images[key]) {
+    delete db.mem.images[key];
+  } else { const e = new Error('Image not found'); e.status = 404; throw e; }
+}
+
+module.exports = { ALLOWED, MAX_BYTES, catalog, byKey, isLibrary, sniffMime, seed, list, head, getData, replace, updateDetails, reset, create, remove };

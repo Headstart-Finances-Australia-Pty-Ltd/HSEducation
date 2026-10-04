@@ -5,6 +5,8 @@
 // PUT   /api/images/:key        — replace image (raw bytes)    (editor+)
 // PATCH /api/images/:key        — edit name / purpose          (editor+)
 // POST  /api/images/:key/reset  — restore the original photo   (editor+)
+// POST  /api/images?label=Name  — add a new library image     (editor+)
+// DELETE /api/images/:key       — delete a library image       (editor+)
 // ============================================================
 const express = require('express');
 const router  = express.Router();
@@ -45,7 +47,7 @@ router.get('/', requireStaff, async (req, res) => {
 router.put('/:key', requireEditor, rawImage, async (req, res) => {
   try {
     const { key } = req.params;
-    if (!images.byKey[key]) return res.status(404).json({ message: 'Unknown image' });
+    if (!images.byKey[key] && !images.isLibrary(key)) return res.status(404).json({ message: 'Unknown image' });
     const buf = req.body;
     if (!Buffer.isBuffer(buf) || !buf.length) {
       return res.status(400).json({ message: 'Send a JPG, PNG, WebP or GIF image file.' });
@@ -71,7 +73,7 @@ router.use((err, req, res, next) => {
 router.patch('/:key', requireEditor, async (req, res) => {
   try {
     const { key } = req.params;
-    if (!images.byKey[key]) return res.status(404).json({ message: 'Unknown image' });
+    if (!images.byKey[key] && !images.isLibrary(key)) return res.status(404).json({ message: 'Unknown image' });
     const label = String((req.body || {}).label || '').trim().slice(0, 150);
     const purpose = String((req.body || {}).purpose || '').trim().slice(0, 1000);
     if (!label) return res.status(400).json({ message: 'Name is required.' });
@@ -92,6 +94,33 @@ router.post('/:key/reset', requireEditor, async (req, res) => {
     res.json({ message: 'Original image restored' });
   } catch (err) {
     res.status(400).json({ message: err.message });
+  }
+});
+
+// Add a new library image (upload raw bytes, name in ?label=)
+router.post('/', requireEditor, rawImage, async (req, res) => {
+  try {
+    const buf = req.body;
+    if (!Buffer.isBuffer(buf) || !buf.length) return res.status(400).json({ message: 'Choose a JPG, PNG, WebP or GIF image file.' });
+    const mime = images.sniffMime(buf);
+    if (!mime) return res.status(400).json({ message: 'That file is not a valid JPG, PNG, WebP or GIF image.' });
+    const label = String(req.query.label || '').trim();
+    if (!label) return res.status(400).json({ message: 'Please give the image a name.' });
+    const key = await images.create(buf, mime, label, req.admin.username);
+    await logAudit(req.admin, 'image.add', `${key} (${label})`);
+    res.status(201).json({ message: 'Image added', key });
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+});
+
+router.delete('/:key', requireEditor, async (req, res) => {
+  try {
+    await images.remove(req.params.key);
+    await logAudit(req.admin, 'image.delete', req.params.key);
+    res.json({ message: 'Image deleted' });
+  } catch (err) {
+    res.status(err.status || 500).json({ message: err.message });
   }
 });
 
