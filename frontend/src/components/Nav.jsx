@@ -10,7 +10,7 @@ const Nav = ({ page, setPage }) => {
     <nav className="nav">
       <div className="nav-inner">
         <div className="nav-logo" onClick={() => setPage('Home')}>
-          <Logo size={44} />
+          <Logo size={54} />
           <div>
             <div className="nav-logo-text">Headstart Education</div>
             <div className="nav-logo-sub">Education for Children in Need</div>

@@ -6,7 +6,7 @@ const Footer = ({ setPage }) => (
       <div className="footer-grid">
         <div>
           <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '1rem', cursor: 'pointer' }} onClick={() => setPage('Home')}>
-            <Logo size={28} />
+            <Logo size={36} />
             <div>
               <div style={{ fontFamily: 'var(--font-display)', fontWeight: 600, fontSize: '0.85rem' }}>Headstart Education</div>
               <div style={{ fontSize: '0.62rem', color: 'rgba(255,255,255,0.45)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>hseducation.com.au</div>
