@@ -10,7 +10,7 @@
 const express = require('express');
 const router  = express.Router();
 const db      = require('../db');
-const { requireEditor } = require('../lib/auth');
+const { requireEditor, optionalStaff } = require('../lib/auth');
 const images  = require('../lib/images');
 
 const CATEGORIES = ['Scholarships', 'Literacy', 'Indigenous', 'Vocational', 'Infrastructure', 'General'];
@@ -33,9 +33,13 @@ async function findProgram(id) {
 router.get('/', async (req, res) => {
   try {
     const { category, status } = req.query;
+    // Visitors only ever see projects that are switched on; staff see everything.
+    const staff = await optionalStaff(req);
+    const onlyVisible = !staff || req.query.visible === 'true';
     if (db.isConnected()) {
       let sql = 'SELECT * FROM programs WHERE 1=1';
       const params = [];
+      if (onlyVisible) sql += ' AND is_visible = true';
       if (category) { params.push(category); sql += ` AND category=$${params.length}`; }
       if (status)   { params.push(status);   sql += ` AND status=$${params.length}`; }
       sql += ' ORDER BY created_at DESC';
@@ -43,6 +47,7 @@ router.get('/', async (req, res) => {
       return res.json(result.rows);
     }
     let list = db.mem.programs;
+    if (onlyVisible) list = list.filter(p => p.is_visible !== false);
     if (category) list = list.filter(p => p.category === category);
     if (status)   list = list.filter(p => p.status   === status);
     res.json(list);
@@ -56,11 +61,12 @@ router.get('/:id', async (req, res) => {
   try {
     if (db.isConnected()) {
       const result = await db.query('SELECT * FROM programs WHERE id=$1', [req.params.id]);
-      if (!result.rows.length) return res.status(404).json({ error: 'Not found' });
-      return res.json(result.rows[0]);
+      const row = result.rows[0];
+      if (!row || (row.is_visible === false && !(await optionalStaff(req)))) return res.status(404).json({ error: 'Not found' });
+      return res.json(row);
     }
     const p = db.mem.programs.find(x => x.id === req.params.id);
-    if (!p) return res.status(404).json({ error: 'Not found' });
+    if (!p || (p.is_visible === false && !(await optionalStaff(req)))) return res.status(404).json({ error: 'Not found' });
     res.json(p);
   } catch (err) {
     res.status(500).json({ error: err.message });
@@ -70,21 +76,22 @@ router.get('/:id', async (req, res) => {
 // POST /api/programs
 router.post('/', requireEditor, async (req, res) => {
   const { name, category, description, location, goal_amount, status, image_url } = req.body;
+  const is_visible = req.body.is_visible !== false;
   if (!name || !String(name).trim() || !category) return res.status(400).json({ error: 'name and category are required' });
   if (!CATEGORIES.includes(category)) return res.status(400).json({ error: 'Unknown category' });
   if (status && !STATUSES.includes(status)) return res.status(400).json({ error: 'Unknown status' });
   try {
     if (db.isConnected()) {
       const result = await db.query(
-        `INSERT INTO programs (name,category,description,location,goal_amount,raised_amount,status,image_url)
-         VALUES ($1,$2,$3,$4,$5,0,$6,$7) RETURNING *`,
-        [name, category, description||'', location||'', num(goal_amount), status||'active', image_url||null]
+        `INSERT INTO programs (name,category,description,location,goal_amount,raised_amount,status,image_url,is_visible)
+         VALUES ($1,$2,$3,$4,$5,0,$6,$7,$8) RETURNING *`,
+        [name, category, description||'', location||'', num(goal_amount), status||'active', image_url||null, is_visible]
       );
       return res.status(201).json(result.rows[0]);
     }
     const p = { id: db.newId(), name, category, description:description||'', location:location||'',
       goal_amount: num(goal_amount), raised_amount:0,
-      status: status||'active', image_url: image_url||null, created_at: new Date() };
+      status: status||'active', image_url: image_url||null, is_visible, created_at: new Date() };
     db.mem.programs.push(p);
     res.status(201).json(p);
   } catch (err) {
@@ -108,6 +115,7 @@ router.put('/:id', requireEditor, async (req, res) => {
       raised_amount: has('raised_amount') ? num(b.raised_amount) : Number(cur.raised_amount),
       status:        has('status') ? b.status : cur.status,
       image_url:     has('image_url') ? (b.image_url || null) : cur.image_url,
+      is_visible:    has('is_visible') ? !!b.is_visible : cur.is_visible !== false,
     };
     if (!next.name) return res.status(400).json({ error: 'Name is required' });
     if (!CATEGORIES.includes(next.category)) return res.status(400).json({ error: 'Unknown category' });
@@ -117,9 +125,9 @@ router.put('/:id', requireEditor, async (req, res) => {
     if (db.isConnected()) {
       const result = await db.query(
         `UPDATE programs SET name=$1,category=$2,description=$3,location=$4,
-         goal_amount=$5,raised_amount=$6,status=$7,image_url=$8,updated_at=NOW()
-         WHERE id=$9 RETURNING *`,
-        [next.name, next.category, next.description, next.location, next.goal_amount, next.raised_amount, next.status, next.image_url, req.params.id]);
+         goal_amount=$5,raised_amount=$6,status=$7,image_url=$8,is_visible=$9,updated_at=NOW()
+         WHERE id=$10 RETURNING *`,
+        [next.name, next.category, next.description, next.location, next.goal_amount, next.raised_amount, next.status, next.image_url, next.is_visible, req.params.id]);
       saved = result.rows[0];
     } else {
       const i = db.mem.programs.findIndex((x) => x.id === req.params.id);

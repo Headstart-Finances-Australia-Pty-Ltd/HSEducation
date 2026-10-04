@@ -12,7 +12,7 @@ const { Pool } = require('pg');
 const memStore = {
   donations: [],
   programs: [
-    { id:'p1', name:'First Project — Rural School, Uttar Pradesh', category:'Infrastructure', description:'Our first project is currently in development. We have identified a school in a rural village in Uttar Pradesh where there is a need for additional classroom infrastructure and learning resources. We are currently completing the groundwork required to begin supporting the school.', location:'Uttar Pradesh, India', goal_amount:0, raised_amount:0, status:'fundraising', image_url:null, created_at: new Date() },
+    { id:'p1', name:'First Project — Rural School, Uttar Pradesh', category:'Infrastructure', description:'Our first project is currently in development. We have identified a school in a rural village in Uttar Pradesh where there is a need for additional classroom infrastructure and learning resources. We are currently completing the groundwork required to begin supporting the school.', location:'Uttar Pradesh, India', goal_amount:0, raised_amount:0, status:'fundraising', is_visible:true, image_url:null, created_at: new Date() },
   ],
   providers: [
     { id:'v1', name:'Square',            type:'square',  is_active:true,  created_at: new Date() },

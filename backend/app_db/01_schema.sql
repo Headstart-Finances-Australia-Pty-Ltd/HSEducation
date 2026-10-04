@@ -95,6 +95,8 @@ CREATE TABLE IF NOT EXISTS site_images (
 
 -- Deleted built-in images are hidden (not erased) so they can be restored.
 ALTER TABLE site_images ADD COLUMN IF NOT EXISTS is_deleted BOOLEAN NOT NULL DEFAULT false;
+-- Images can be switched off (hidden on the website) without deleting them.
+ALTER TABLE site_images ADD COLUMN IF NOT EXISTS is_hidden BOOLEAN NOT NULL DEFAULT false;
 
 -- ─────────────────────────────────────────────────────────
 -- TABLE: contacts
@@ -203,6 +205,9 @@ CREATE TABLE IF NOT EXISTS programs (
   created_at     TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   updated_at     TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
+
+-- Projects can be switched on/off for the public Projects page.
+ALTER TABLE programs ADD COLUMN IF NOT EXISTS is_visible BOOLEAN NOT NULL DEFAULT true;
 
 COMMENT ON TABLE programs IS 'Educational programs and projects that donations are allocated to';
 

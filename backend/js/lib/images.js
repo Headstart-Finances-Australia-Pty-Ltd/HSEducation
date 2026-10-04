@@ -93,7 +93,7 @@ function memRow(key) {
     db.mem.images[key] = {
       key, label: byKey[key].label, purpose: byKey[key].purpose,
       mime_type: sniffMime(buf) || 'image/jpeg', data: buf, size_bytes: buf.length,
-      is_custom: false, is_deleted: false, updated_by: null, updated_at: new Date(),
+      is_custom: false, is_deleted: false, is_hidden: false, updated_by: null, updated_at: new Date(),
     };
   }
   return db.mem.images[key];
@@ -107,6 +107,7 @@ const withCatalog = (row) => ({
   size_bytes: row.size_bytes,
   is_custom: row.is_custom,
   is_deleted: !!row.is_deleted,
+  is_hidden: !!row.is_hidden,
   updated_by: row.updated_by,
   updated_at: row.updated_at,
   usage: byKey[row.key]?.usage || [],
@@ -116,7 +117,7 @@ const withCatalog = (row) => ({
 async function list() {
   if (db.isConnected()) {
     const { rows } = await db.query(
-      'SELECT key,label,purpose,mime_type,size_bytes,is_custom,is_deleted,updated_by,updated_at FROM site_images'
+      'SELECT key,label,purpose,mime_type,size_bytes,is_custom,is_deleted,is_hidden,updated_by,updated_at FROM site_images'
     );
     const order = Object.fromEntries(catalog.map((c, i) => [c.key, i]));
     const built = rows.filter((r) => byKey[r.key]).sort((a, b) => order[a.key] - order[b.key]);
@@ -131,7 +132,7 @@ async function list() {
 async function head(key) {
   if (!byKey[key] && !isLibrary(key)) return null;
   if (db.isConnected()) {
-    const { rows } = await db.query('SELECT key,mime_type,size_bytes,is_deleted,updated_at FROM site_images WHERE key=$1', [key]);
+    const { rows } = await db.query('SELECT key,mime_type,size_bytes,is_deleted,is_hidden,updated_at FROM site_images WHERE key=$1', [key]);
     if (rows[0]) return rows[0];
     return null;
   }
@@ -223,6 +224,18 @@ async function remove(key, by) {
   return 'hidden';
 }
 
+// Switches an image on/off on the website without deleting it.
+async function setHidden(key, hidden, by) {
+  if (!byKey[key] && !isLibrary(key)) { const e = new Error('Unknown image'); e.status = 404; throw e; }
+  if (db.isConnected()) {
+    const { rowCount } = await db.query('UPDATE site_images SET is_hidden=$2, updated_by=$3, updated_at=NOW() WHERE key=$1', [key, !!hidden, by || null]);
+    if (!rowCount) { const e = new Error('Image not found'); e.status = 404; throw e; }
+  } else {
+    const r = memRow(key); if (!r) { const e = new Error('Image not found'); e.status = 404; throw e; }
+    Object.assign(r, { is_hidden: !!hidden, updated_by: by || null, updated_at: new Date() });
+  }
+}
+
 // Brings a deleted built-in image back exactly as it was.
 async function restore(key, by) {
   if (!byKey[key]) { const e = new Error('Unknown image'); e.status = 404; throw e; }
@@ -233,4 +246,4 @@ async function restore(key, by) {
   }
 }
 
-module.exports = { ALLOWED, MAX_BYTES, catalog, byKey, isLibrary, sniffMime, seed, list, head, getData, replace, updateDetails, reset, create, remove, restore };
+module.exports = { ALLOWED, MAX_BYTES, catalog, byKey, isLibrary, sniffMime, seed, list, head, getData, replace, updateDetails, reset, create, remove, restore, setHidden };

@@ -8,11 +8,12 @@
 // POST  /api/images?label=Name  — add a new library image     (editor+)
 // DELETE /api/images/:key       — delete an image              (editor+)
 // POST  /api/images/:key/restore — bring a deleted image back  (editor+)
+// POST  /api/images/:key/visibility — show/hide on the website (editor+)  body: { visible: bool }
 // ============================================================
 const express = require('express');
 const router  = express.Router();
 const images  = require('../lib/images');
-const { requireStaff, requireEditor } = require('../lib/auth');
+const { requireStaff, requireEditor, optionalStaff } = require('../lib/auth');
 const { logAudit } = require('./adminAuth');
 
 // 1×1 transparent GIF — what the website receives for a deleted image, so the
@@ -29,10 +30,14 @@ router.get('/:key', async (req, res, next) => {
   try {
     const head = await images.head(req.params.key);
     if (!head) return res.status(404).end();
-    const etag = `"${head.key}-${new Date(head.updated_at).getTime()}-${head.size_bytes}${head.is_deleted ? '-deleted' : ''}"`;
-    res.set({ ETag: etag, 'Cache-Control': 'public, no-cache', 'X-Content-Type-Options': 'nosniff' });
+    // Hidden images are blank for visitors, but staff can still preview them in the
+    // Admin Console (?preview=1) so they know which picture they switched off.
+    const staffPreview = !!head.is_hidden && !head.is_deleted && req.query.preview === '1' && !!(await optionalStaff(req));
+    const blank = head.is_deleted || (head.is_hidden && !staffPreview);
+    const etag = `"${head.key}-${new Date(head.updated_at).getTime()}-${head.size_bytes}${head.is_deleted ? '-deleted' : head.is_hidden ? (staffPreview ? '-hidden-preview' : '-hidden') : ''}"`;
+    res.set({ ETag: etag, 'Cache-Control': staffPreview ? 'private, no-cache' : 'public, no-cache', 'X-Content-Type-Options': 'nosniff' });
     if (req.headers['if-none-match'] === etag) return res.status(304).end();
-    if (head.is_deleted) return res.set('X-Image-Deleted', '1').type('image/gif').send(BLANK_GIF);
+    if (blank) return res.set('X-Image-Deleted', '1').type('image/gif').send(BLANK_GIF);
     const row = await images.getData(req.params.key);
     if (!row) return res.status(404).end();
     res.type(row.mime_type).send(row.data);
@@ -117,6 +122,17 @@ router.post('/', requireEditor, rawImage, async (req, res) => {
     res.status(201).json({ message: 'Image added', key });
   } catch (err) {
     res.status(500).json({ message: err.message });
+  }
+});
+
+router.post('/:key/visibility', requireEditor, async (req, res) => {
+  try {
+    const visible = !!(req.body || {}).visible;
+    await images.setHidden(req.params.key, !visible, req.admin.username);
+    await logAudit(req.admin, visible ? 'image.show' : 'image.hide', req.params.key);
+    res.json({ message: visible ? 'Image is now shown on the website' : 'Image is now hidden on the website' });
+  } catch (err) {
+    res.status(err.status || 500).json({ message: err.message });
   }
 });
 

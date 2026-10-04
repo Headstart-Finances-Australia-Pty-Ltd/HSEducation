@@ -77,6 +77,20 @@ async function requireAuth(req, res, next) {
   }
 }
 
+// Like requireAuth but never rejects: resolves to the logged-in staff member, or
+// null for ordinary visitors. Used where public and staff see different things
+// (e.g. hidden projects and images are only visible to staff).
+async function optionalStaff(req) {
+  try {
+    const header = req.headers.authorization || '';
+    const token = (header.startsWith('Bearer ') ? header.slice(7) : null) || req.cookies?.[ADMIN_COOKIE_NAME];
+    if (!token) return null;
+    const payload = jwt.verify(token, getSecret());
+    const user = await users.findById(payload.id);
+    return user && user.is_active ? { id: user.id, username: user.username, role: user.role } : null;
+  } catch { return null; }
+}
+
 function requireRole(...allowed) {
   return (req, res, next) =>
     requireAuth(req, res, () => {
@@ -97,6 +111,7 @@ module.exports = {
   comparePassword,
   signAdminToken,
   requireAuth,
+  optionalStaff,
   requireStaff,
   requireEditor,
   requireAdmin,
