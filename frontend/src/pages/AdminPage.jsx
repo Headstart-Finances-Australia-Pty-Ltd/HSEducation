@@ -1226,8 +1226,12 @@ const ImagesTab = ({ canEdit }) => {
   const [preview, setPreview] = useState(null);    // item being previewed
   const [editing, setEditing] = useState(null);    // item whose details are being edited
   const [detailForm, setDetailForm] = useState({ label: '', purpose: '' });
+  const [adding, setAdding] = useState(false);     // "Add image" dialog open
+  const [addName, setAddName] = useState('');
+  const [addFile, setAddFile] = useState(null);
   const fileRef = useRef(null);
   const replaceKey = useRef(null);
+  const isLib = (it) => /^lib_/.test(it.key);
 
   const load = useCallback(async () => {
     setLoading(true); setError('');
@@ -1283,6 +1287,37 @@ const ImagesTab = ({ canEdit }) => {
     finally { setBusyKey(null); }
   };
 
+  const addImage = async (e) => {
+    e.preventDefault();
+    if (!addFile) { setError('Choose an image file first.'); return; }
+    if (!addName.trim()) { setError('Please give the image a name.'); return; }
+    setBusyKey('__add'); setError(''); setNotice('');
+    try {
+      const body = await prepareImage(addFile);
+      const res = await fetch(`${API_URL}/api/images?label=${encodeURIComponent(addName.trim())}`, {
+        method: 'POST', credentials: 'include', headers: { 'Content-Type': body.type || addFile.type }, body,
+      });
+      let data = null; try { data = await res.json(); } catch { /* no body */ }
+      if (res.status === 401) throw new Error('Your admin session has expired — please log in again.');
+      if (!res.ok) throw new Error(data?.message || 'Upload failed');
+      setAdding(false); setAddName(''); setAddFile(null);
+      setNotice('Image added to the library.');
+      await load();
+    } catch (err) { setError(err.message); }
+    finally { setBusyKey(null); }
+  };
+
+  const deleteImage = async (it) => {
+    if (!window.confirm(`Delete “${it.label}” permanently? This cannot be undone.`)) return;
+    setBusyKey(it.key); setError(''); setNotice('');
+    try {
+      await adminFetch(`/api/images/${it.key}`, { method: 'DELETE' });
+      setNotice('Image deleted.');
+      await load();
+    } catch (err) { setError(err.message); }
+    finally { setBusyKey(null); }
+  };
+
   const openDetails = (it) => { setEditing(it); setDetailForm({ label: it.label, purpose: it.purpose || '' }); };
   const saveDetails = async (e) => {
     e.preventDefault();
@@ -1317,6 +1352,7 @@ const ImagesTab = ({ canEdit }) => {
         </select>
         <input className="form-input" value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Search images, sections, purpose…" style={{ maxWidth: 320 }} />
         <span style={small}>{visible.length} of {items.length} images</span>
+        {canEdit && <button className="btn-teal" type="button" onClick={() => { setError(''); setAdding(true); }} style={{ marginLeft: 'auto' }}>+ Add image</button>}
       </div>
 
       {error && <div className="payment-error">{error}</div>}
@@ -1340,7 +1376,7 @@ const ImagesTab = ({ canEdit }) => {
                   <td style={cell}>
                     <div style={{ fontWeight: 600, color: 'var(--navy)', fontSize: '0.88rem' }}>{it.label}</div>
                     <div style={{ ...small, marginBottom: '0.35rem' }}><code>{it.key}</code></div>
-                    {it.usage.length === 0 && <span className="admin-status">Spare — not shown on site</span>}
+                    {it.usage.length === 0 && <span className="admin-status">{isLib(it) ? 'Library image — not on any page' : 'Spare — not shown on site'}</span>}
                     {it.usage.map((u, i) => (
                       <div key={i} style={{ ...small, marginBottom: '0.2rem' }}>
                         <strong style={{ color: 'var(--teal)' }}>{u.page}</strong> › {u.section}
@@ -1362,7 +1398,10 @@ const ImagesTab = ({ canEdit }) => {
                         {busyKey === it.key ? 'Working…' : 'Replace'}
                       </button>
                       <button type="button" onClick={() => openDetails(it)} style={{ ...linkBtn('var(--teal)'), display: 'block', marginBottom: '0.3rem' }}>Edit details</button>
-                      {it.is_custom && <button type="button" onClick={() => restore(it)} style={{ ...linkBtn('#dc2626'), display: 'block' }}>Restore original</button>}
+                      {it.is_custom && !isLib(it) && <button type="button" onClick={() => restore(it)} style={{ ...linkBtn('#dc2626'), display: 'block' }}>Restore original</button>}
+                      {isLib(it)
+                        ? <button type="button" onClick={() => deleteImage(it)} disabled={busyKey === it.key} style={{ ...linkBtn('#dc2626'), display: 'block' }}>Delete</button>
+                        : <div style={{ ...small, color: 'var(--gray-500)', whiteSpace: 'normal', maxWidth: 150 }} title="Built-in images are placed on website pages. Use Replace to change them.">Built-in — replace, don't delete</div>}
                     </td>
                   )}
                 </tr>
@@ -1380,6 +1419,22 @@ const ImagesTab = ({ canEdit }) => {
             <p style={{ ...small, marginTop: '0.8rem' }}>{preview.purpose}</p>
           </div>
         )}
+      </Modal>
+
+      <Modal open={adding} onClose={() => setAdding(false)} title="Add image" width={500}>
+        <form onSubmit={addImage}>
+          <div className="form-group">
+            <label className="form-label">Name</label>
+            <input className="form-input" value={addName} onChange={(e) => setAddName(e.target.value)} maxLength={150} placeholder="e.g. School visit, Uttar Pradesh" required />
+          </div>
+          <div className="form-group">
+            <label className="form-label">Image file (JPG, PNG, WebP or GIF)</label>
+            <input className="form-input" type="file" accept="image/jpeg,image/png,image/webp,image/gif" onChange={(e) => setAddFile(e.target.files?.[0] || null)} required />
+          </div>
+          <p style={{ ...small, marginBottom: '1rem' }}>New images go into the library. You can delete them any time. To change a photo that is already on a page, use Replace on that image instead.</p>
+          {error && <div className="payment-error" style={{ marginBottom: '0.8rem' }}>{error}</div>}
+          <button className="donate-btn" type="submit" disabled={busyKey === '__add'}>{busyKey === '__add' ? 'Uploading…' : 'Add image'}</button>
+        </form>
       </Modal>
 
       <Modal open={!!editing} onClose={() => setEditing(null)} title="Edit image details" width={500}>

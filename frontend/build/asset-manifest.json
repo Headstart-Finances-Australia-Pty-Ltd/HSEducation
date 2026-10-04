@@ -1,9 +1,8 @@
 {
   "files": {
-    "main.js": "/static/js/main.6c259458.js",
+    "main.js": "/static/js/main.0ddbb11b.js",
     "static/media/impactBanner.jpg": "/static/media/impactBanner.04a2758a2966d3ad2df4.jpg",
     "static/media/aboutMission.jpg": "/static/media/aboutMission.dd4cdd84227087f11a02.jpg",
-    "static/media/infrastructure.jpg": "/static/media/infrastructure.638b7ae4b3021537845f.jpg",
     "static/media/heroStudents.jpg": "/static/media/heroStudents.cce27f38fe323ae8ee4d.jpg",
     "static/media/aboutFounders.jpg": "/static/media/aboutFounders.8d7a2d69cb5273e4b90e.jpg",
     "static/media/scholarship.jpg": "/static/media/scholarship.2350417389ea99abc4b3.jpg",
@@ -13,27 +12,25 @@
     "static/media/indigenous.jpg": "/static/media/indigenous.1b4a9bce0ed030871eb6.jpg",
     "static/media/pathways.jpg": "/static/media/pathways.717f225e9bbf454f32cf.jpg",
     "static/media/literacy.jpg": "/static/media/literacy.257729399d00136f4340.jpg",
-    "static/media/teamPS.jpg": "/static/media/teamPS.52bde79f7d7e8ee1d602.jpg",
     "static/media/missionKids.jpg": "/static/media/missionKids.ee3e6b0dc78ee8bf36ec.jpg",
     "static/media/vocational.jpg": "/static/media/vocational.65417c78250336efd397.jpg",
     "static/media/regional.jpg": "/static/media/regional.0202cc4d0159e5b9ef78.jpg",
     "static/media/team8.jpg": "/static/media/team8.9db336f2a439011bbfee.jpg",
     "static/media/person1.jpg": "/static/media/person1.754c278711492fa7e8ed.jpg",
     "static/media/team1.jpg": "/static/media/team1.acadaba277f8e8291cc2.jpg",
+    "static/media/infrastructure.jpg": "/static/media/infrastructure.0f7891e29ceb04886b18.jpg",
     "static/media/twoWay.jpg": "/static/media/twoWay.63812f56aef6ca9ab9cc.jpg",
     "static/media/team5.jpg": "/static/media/team5.ddf5569f1b168537f0a8.jpg",
     "static/media/person3.jpg": "/static/media/person3.37733bdfc2a7f3b8860c.jpg",
     "static/media/person2.jpg": "/static/media/person2.b8be236998810d196bac.jpg",
     "static/media/team2.jpg": "/static/media/team2.c53ff341fba24147586c.jpg",
-    "static/media/teamTM.jpg": "/static/media/teamTM.7f88cf6bac8886e9381f.jpg",
-    "static/media/teamHS.jpg": "/static/media/teamHS.6f2c4394f25165f6bc56.jpg",
     "static/media/team3.jpg": "/static/media/team3.20726bc055b11e975e71.jpg",
     "static/media/team6.jpg": "/static/media/team6.ed53700dcfc84fcaeea4.jpg",
     "static/media/team7.jpg": "/static/media/team7.4fed9142a2ff2e047fda.jpg",
     "index.html": "/index.html",
-    "main.6c259458.js.map": "/static/js/main.6c259458.js.map"
+    "main.0ddbb11b.js.map": "/static/js/main.0ddbb11b.js.map"
   },
   "entrypoints": [
-    "static/js/main.6c259458.js"
+    "static/js/main.0ddbb11b.js"
   ]
 }
