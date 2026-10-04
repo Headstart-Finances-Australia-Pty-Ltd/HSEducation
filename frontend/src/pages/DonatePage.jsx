@@ -71,11 +71,11 @@ const DonatePage = () => {
         <div className="donate-hero-bg"><img src={IMGS.donateHero} alt="Giving"/></div>
         <div className="donate-hero-overlay"/>
         <div className="donate-hero-content">
-          <div className="section-label" style={{color:'#065f46'}}>Make a Difference</div>
-          <h1 style={{fontFamily:'var(--font-display)',fontSize:'clamp(2rem,4vw,3rem)',color:'#064e3b',marginBottom:'1rem'}}>
-            Donate to <em style={{color:'#065f46'}}>Headstart Education</em>
+          <div className="section-label">Make a Difference</div>
+          <h1 style={{fontFamily:'var(--font-display)',fontSize:'clamp(2rem,4vw,3rem)',marginBottom:'1rem'}}>
+            Donate to <em>Headstart Education</em>
           </h1>
-          <p style={{color:'#065f46',fontSize:'1.05rem',lineHeight:1.7}}>
+          <p style={{fontSize:'1.05rem',lineHeight:1.7}}>
             Your donation directly funds classroom infrastructure and learning materials for our first project — a rural school in Uttar Pradesh, India. A receipt is issued automatically for every donation.
           </p>
         </div>

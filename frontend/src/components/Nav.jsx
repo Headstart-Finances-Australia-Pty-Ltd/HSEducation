@@ -4,7 +4,8 @@ import Icon from './Icon';
 
 const Nav = ({ page, setPage }) => {
   const [mobileOpen, setMobileOpen] = useState(false);
-  const links = ['Home', 'About', 'Projects', 'Impact', 'Legal'];
+  // [page key, label] — Contact Us is the last tab
+  const links = [['Home', 'Home'], ['About', 'About'], ['Projects', 'Projects'], ['Impact', 'Impact'], ['Legal', 'Legal'], ['Contact', 'Contact Us']];
   return (
     <nav className="nav">
       <div className="nav-inner">
@@ -16,8 +17,8 @@ const Nav = ({ page, setPage }) => {
           </div>
         </div>
         <div className="nav-links">
-          {links.map(l => (
-            <span key={l} className={`nav-link${page === l ? ' active' : ''}`} onClick={() => setPage(l)}>{l}</span>
+          {links.map(([k, label]) => (
+            <span key={k} className={`nav-link${page === k ? ' active' : ''}`} onClick={() => setPage(k)}>{label}</span>
           ))}
           <button className="nav-cta" onClick={() => setPage('Donate')}>Donate Now</button>
         </div>
@@ -26,9 +27,9 @@ const Nav = ({ page, setPage }) => {
         </div>
       </div>
       <div className={`nav-mobile${mobileOpen ? ' open' : ''}`}>
-        {links.map(l => (
-          <span key={l} className={`nav-link${page === l ? ' active' : ''}`}
-            onClick={() => { setPage(l); setMobileOpen(false); }}>{l}</span>
+        {links.map(([k, label]) => (
+          <span key={k} className={`nav-link${page === k ? ' active' : ''}`}
+            onClick={() => { setPage(k); setMobileOpen(false); }}>{label}</span>
         ))}
         <button className="nav-cta" style={{ marginTop: '0.75rem', width: 'fit-content' }}
           onClick={() => { setPage('Donate'); setMobileOpen(false); }}>Donate Now</button>

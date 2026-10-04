@@ -18,9 +18,9 @@ const LegalPage = () => {
         <div className="page-hero-bg"><img src={IMGS.missionKids} alt="Education"/></div>
         <div className="page-hero-overlay"/>
         <div className="page-hero-content">
-          <div className="section-label" style={{color:'#065f46'}}>Legal & Compliance</div>
-          <h1 style={{fontFamily:'var(--font-display)',fontSize:'clamp(2rem,4vw,3rem)',color:'#064e3b',marginBottom:'1rem'}}>Legal, Compliance & <em style={{color:'#065f46'}}>Governance</em></h1>
-          <p style={{color:'#065f46',fontSize:'1.05rem'}}>Headstart Education Australia Pty Ltd is committed to full compliance with Australian charity law. Find our policies and registrations below.</p>
+          <div className="section-label">Legal & Compliance</div>
+          <h1 style={{fontFamily:'var(--font-display)',fontSize:'clamp(2rem,4vw,3rem)',marginBottom:'1rem'}}>Legal, Compliance & <em>Governance</em></h1>
+          <p style={{fontSize:'1.05rem'}}>Headstart Education Australia Pty Ltd is committed to full compliance with Australian charity law. Find our policies and registrations below.</p>
         </div>
       </div>
 

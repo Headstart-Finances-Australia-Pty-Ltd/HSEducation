@@ -21,8 +21,8 @@ const Footer = ({ setPage }) => (
         <div>
           <div className="footer-col-title">Navigation</div>
           <ul className="footer-links">
-            {['Home', 'About', 'Projects', 'Impact', 'Donate', 'Legal'].map(p => (
-              <li key={p}><a onClick={() => setPage(p)}>{p}</a></li>
+            {[['Home', 'Home'], ['About', 'About'], ['Projects', 'Projects'], ['Impact', 'Impact'], ['Donate', 'Donate'], ['Legal', 'Legal'], ['Contact', 'Contact Us']].map(([k, label]) => (
+              <li key={k}><a onClick={() => setPage(k)}>{label}</a></li>
             ))}
             <li><a onClick={() => setPage('Admin')}>Admin</a></li>
           </ul>

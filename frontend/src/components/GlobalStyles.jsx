@@ -52,13 +52,13 @@ const GlobalStyles = () => (
     /* HERO */
     .hero { min-height: 100vh; position: relative; overflow: hidden; padding-top: 72px; display: flex; align-items: center; }
     .hero-bg-img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; object-position: center; }
-    .hero-overlay { position: absolute; inset: 0; background: linear-gradient(135deg, rgba(254,249,195,0.97) 0%, rgba(254,249,195,0.96) 40%, rgba(209,250,229,0.95) 70%, rgba(6,95,70,0.90) 100%); }
+    .hero-overlay { position: absolute; inset: 0; background: linear-gradient(135deg, rgba(14,38,66,0.95) 0%, rgba(26,58,92,0.93) 48%, rgba(13,115,119,0.90) 100%); }
     .hero-dots { position: absolute; inset: 0; background-image: radial-gradient(circle, rgba(255,255,255,0.06) 1px, transparent 1px); background-size: 32px 32px; }
     .hero-inner { max-width: 1200px; margin: 0 auto; padding: 5rem 2rem; position: relative; z-index: 1; display: grid; grid-template-columns: 1fr 1fr; gap: 4rem; align-items: center; }
-    .hero-badge { display: inline-flex; align-items: center; gap: 8px; background: rgba(5,150,105,0.12); border: 1px solid rgba(5,150,105,0.3); color: #065f46; padding: 0.4rem 1rem; border-radius: 100px; font-size: 0.8rem; font-weight: 600; letter-spacing: 0.05em; text-transform: uppercase; margin-bottom: 1.5rem; }
-    .hero-title { font-size: clamp(2.4rem, 5vw, 3.8rem); color: #064e3b; margin-bottom: 1.5rem; font-weight: 300; }
-    .hero-title strong { font-weight: 700; color: #0d7377; font-style: italic; }
-    .hero-desc { font-size: 1.1rem; color: #065f46; max-width: 520px; margin-bottom: 2.5rem; }
+    .hero-badge { display: inline-flex; align-items: center; gap: 8px; background: rgba(212,160,23,0.18); border: 1px solid rgba(240,192,64,0.55); color: var(--gold-light); padding: 0.4rem 1rem; border-radius: 100px; font-size: 0.8rem; font-weight: 600; letter-spacing: 0.05em; text-transform: uppercase; margin-bottom: 1.5rem; }
+    .hero-title { font-size: clamp(2.4rem, 5vw, 3.8rem); color: #ffffff; margin-bottom: 1.5rem; font-weight: 300; }
+    .hero-title strong { font-weight: 700; color: var(--gold-light); font-style: italic; }
+    .hero-desc { font-size: 1.1rem; color: rgba(255,255,255,0.9); max-width: 520px; margin-bottom: 2.5rem; }
     .hero-actions { display: flex; gap: 1rem; flex-wrap: wrap; }
     .hero-stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 1rem; margin-top: 3rem; }
     .hero-stat { text-align: center; background: white; border: none; border-radius: 8px; padding: 1.2rem 0.8rem; box-shadow: 0 2px 8px rgba(6,95,70,0.1); }
@@ -142,24 +142,35 @@ const GlobalStyles = () => (
     .team-bio { font-size: 0.82rem; color: var(--gray-600); line-height: 1.55; }
 
     /* PAGE HERO */
-    .page-hero { position: relative; overflow: hidden; padding: 5rem 2rem 6rem; margin-top: 72px; }
+    .page-hero { position: relative; overflow: hidden; padding: 5rem 2rem 6rem; margin-top: 72px; border-bottom: 4px solid var(--gold); }
     .page-hero-bg { position: absolute; inset: 0; }
     .page-hero-bg img { width: 100%; height: 100%; object-fit: cover; }
-    .page-hero-overlay { position: absolute; inset: 0; background: linear-gradient(135deg, rgba(254,249,195,0.97) 0%, rgba(254,249,195,0.96) 40%, rgba(209,250,229,0.95) 70%, rgba(6,95,70,0.90) 100%); }
+    .page-hero-overlay { position: absolute; inset: 0; background: linear-gradient(135deg, rgba(14,38,66,0.95) 0%, rgba(26,58,92,0.93) 48%, rgba(13,115,119,0.90) 100%); }
     .page-hero-content { position: relative; z-index: 1; max-width: 700px; margin: 0 auto; text-align: center; }
+
+    /* Header / banner typography on the navy–teal background */
+    .page-hero-content .section-label, .donate-hero-content .section-label, .impact-banner-content .section-label { color: var(--gold-light); }
+    .page-hero-content h1, .donate-hero-content h1, .impact-banner-content h2 { font-family: var(--font-display); color: #ffffff; margin-bottom: 1rem; }
+    .page-hero-content h1 { font-size: clamp(2rem, 4vw, 3rem); }
+    .page-hero-content h1 em, .donate-hero-content h1 em, .impact-banner-content h2 em { color: var(--gold-light); font-style: italic; }
+    .page-hero-content p, .donate-hero-content p, .impact-banner-content p { color: rgba(255,255,255,0.9); font-size: 1.05rem; line-height: 1.7; }
+    .hero .btn-primary, .impact-banner .btn-primary { background: var(--gold); color: var(--navy); }
+    .hero .btn-primary:hover, .impact-banner .btn-primary:hover { background: var(--gold-light); box-shadow: 0 8px 24px rgba(212,160,23,0.35); }
+    .hero .btn-outline, .impact-banner .btn-outline { color: #ffffff; border-color: rgba(255,255,255,0.7); }
+    .hero .btn-outline:hover, .impact-banner .btn-outline:hover { background: rgba(255,255,255,0.14); border-color: #ffffff; }
 
     /* IMPACT BANNER */
     .impact-banner { position: relative; overflow: hidden; padding: 6rem 2rem; }
     .impact-banner-bg { position: absolute; inset: 0; }
     .impact-banner-bg img { width: 100%; height: 100%; object-fit: cover; }
-    .impact-banner-overlay { position: absolute; inset: 0; background: linear-gradient(160deg, rgba(236,253,245,0.96) 0%, rgba(209,250,229,0.94) 60%, rgba(254,249,195,0.92) 100%); }
+    .impact-banner-overlay { position: absolute; inset: 0; background: linear-gradient(160deg, rgba(14,38,66,0.95) 0%, rgba(26,58,92,0.93) 55%, rgba(13,115,119,0.90) 100%); }
     .impact-banner-content { position: relative; z-index: 1; text-align: center; max-width: 700px; margin: 0 auto; }
 
     /* DONATE HERO */
-    .donate-hero { position: relative; overflow: hidden; padding: 4rem 2rem 5rem; margin-top: 72px; }
+    .donate-hero { position: relative; overflow: hidden; padding: 4rem 2rem 5rem; margin-top: 72px; border-bottom: 4px solid var(--gold); }
     .donate-hero-bg { position: absolute; inset: 0; }
     .donate-hero-bg img { width: 100%; height: 100%; object-fit: cover; object-position: center 30%; }
-    .donate-hero-overlay { position: absolute; inset: 0; background: linear-gradient(135deg, rgba(254,249,195,0.97) 0%, rgba(254,249,195,0.96) 40%, rgba(209,250,229,0.95) 70%, rgba(6,95,70,0.90) 100%); }
+    .donate-hero-overlay { position: absolute; inset: 0; background: linear-gradient(135deg, rgba(14,38,66,0.95) 0%, rgba(26,58,92,0.93) 48%, rgba(13,115,119,0.90) 100%); }
     .donate-hero-content { position: relative; z-index: 1; max-width: 640px; margin: 0 auto; text-align: center; }
 
     /* FORMS */

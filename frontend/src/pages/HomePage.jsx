@@ -132,11 +132,11 @@ const HomePage = ({ setPage }) => (
       <div className="impact-banner-bg"><img src={IMGS.regional} alt="Stacked books and learning materials"/></div>
       <div className="impact-banner-overlay"/>
       <div className="impact-banner-content">
-        <div className="section-label" style={{color:'#0d7377'}}>Help Us Get Started</div>
-        <h2 style={{fontFamily:'var(--font-display)',fontSize:'clamp(1.8rem,3vw,2.6rem)',color:'#064e3b',marginBottom:'1rem'}}>
-          Every Dollar Funds <em style={{color:'#0d7377'}}>Real Classroom Resources</em>
+        <div className="section-label">Help Us Get Started</div>
+        <h2 style={{fontFamily:'var(--font-display)',fontSize:'clamp(1.8rem,3vw,2.6rem)',marginBottom:'1rem'}}>
+          Every Dollar Funds <em>Real Classroom Resources</em>
         </h2>
-        <p style={{color:'#065f46',fontSize:'1.05rem',marginBottom:'2rem',lineHeight:1.7}}>
+        <p style={{fontSize:'1.05rem',marginBottom:'2rem',lineHeight:1.7}}>
           Your donation directly funds classroom infrastructure and learning materials for our first project — a rural school in Uttar Pradesh, India.
         </p>
         <div style={{display:'flex',gap:'1rem',justifyContent:'center',flexWrap:'wrap'}}>

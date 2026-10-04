@@ -10,9 +10,9 @@ const ImpactPage = () => {
         <div className="page-hero-bg"><img src={IMGS.impactBanner} alt="Students in class"/></div>
         <div className="page-hero-overlay"/>
         <div className="page-hero-content">
-          <div className="section-label" style={{color:'#065f46'}}>Transparency & Impact</div>
-          <h1 style={{fontFamily:'var(--font-display)',fontSize:'clamp(2rem,4vw,3rem)',color:'#064e3b',marginBottom:'1rem'}}>Transparency From Day One</h1>
-          <p style={{color:'#065f46',fontSize:'1.05rem',lineHeight:1.7}}>We're a newly established charity. Our first project hasn't launched yet, so there's no impact data to report — but here's exactly where we stand, and how we'll report as we grow.</p>
+          <div className="section-label">Transparency & Impact</div>
+          <h1 style={{fontFamily:'var(--font-display)',fontSize:'clamp(2rem,4vw,3rem)',marginBottom:'1rem'}}>Transparency From Day One</h1>
+          <p style={{fontSize:'1.05rem',lineHeight:1.7}}>We're a newly established charity. Our first project hasn't launched yet, so there's no impact data to report — but here's exactly where we stand, and how we'll report as we grow.</p>
         </div>
       </div>
 

@@ -15,9 +15,9 @@ const ProjectsPage = ({ setPage }) => {
         <div className="page-hero-bg"><img src={IMGS.communityGroup} alt="Education programs"/></div>
         <div className="page-hero-overlay"/>
         <div className="page-hero-content">
-          <div className="section-label" style={{color:'#065f46'}}>Our Projects</div>
-          <h1 style={{fontFamily:'var(--font-display)',fontSize:'clamp(2rem,4vw,3rem)',color:'#064e3b',marginBottom:'1rem'}}>Our First Project Is <em style={{color:'#065f46'}}>In Development</em></h1>
-          <p style={{color:'#065f46',fontSize:'1.05rem'}}>We directly provide schools with infrastructure, learning materials and, where funding permits, scholarships — starting with a school in rural India.</p>
+          <div className="section-label">Our Projects</div>
+          <h1 style={{fontFamily:'var(--font-display)',fontSize:'clamp(2rem,4vw,3rem)',marginBottom:'1rem'}}>Our First Project Is <em>In Development</em></h1>
+          <p style={{fontSize:'1.05rem'}}>We directly provide schools with infrastructure, learning materials and, where funding permits, scholarships — starting with a school in rural India.</p>
         </div>
       </div>
 
@@ -72,8 +72,8 @@ const ProjectsPage = ({ setPage }) => {
         <div className="impact-banner-bg"><img src={IMGS.impactBanner} alt="Students"/></div>
         <div className="impact-banner-overlay"/>
         <div className="impact-banner-content">
-          <h2 style={{fontFamily:'var(--font-display)',fontSize:'clamp(1.8rem,3vw,2.4rem)',color:'#064e3b',marginBottom:'1rem'}}>Help Us Launch Our First Project</h2>
-          <p style={{color:'#065f46',marginBottom:'2rem',fontSize:'1.05rem'}}>Your donation goes directly toward classroom infrastructure and learning materials.</p>
+          <h2 style={{fontFamily:'var(--font-display)',fontSize:'clamp(1.8rem,3vw,2.4rem)',marginBottom:'1rem'}}>Help Us Launch Our First Project</h2>
+          <p style={{marginBottom:'2rem',fontSize:'1.05rem'}}>Your donation goes directly toward classroom infrastructure and learning materials.</p>
           <button className="btn-primary" onClick={() => setPage('Donate')}><Icon name="heart" size={18}/> Donate Now</button>
         </div>
       </div>

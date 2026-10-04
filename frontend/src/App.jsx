@@ -8,6 +8,7 @@ import ProjectsPage from './pages/ProjectsPage';
 import ImpactPage from './pages/ImpactPage';
 import DonatePage from './pages/DonatePage';
 import LegalPage from './pages/LegalPage';
+import ContactPage from './pages/ContactPage';
 import AdminPage from './pages/AdminPage';
 import { installImageFallback } from './images';
 
@@ -27,6 +28,7 @@ export default function App() {
     Impact:   <ImpactPage />,
     Donate:   <DonatePage />,
     Legal:    <LegalPage />,
+    Contact:  <ContactPage />,
     // Admin is a normal page, reached only via the Footer link (it's not
     // in the main nav). It handles its own login — see AdminPage.jsx —
     // the real access control is enforced server-side by requireAdmin.
